@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 export const colors = {
   forest: "#103C35",
+  blue: "#075CF5",
   mint: "#C7F5B5",
   green: "#006F53",
   ink: "#143B34",
@@ -304,7 +305,7 @@ export const styles = StyleSheet.create({
     paddingVertical: 10,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: colors.forest,
+    backgroundColor: colors.blue,
     borderRadius: 8,
   },
   buttonText: {
@@ -320,7 +321,7 @@ export const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   secondaryButtonText: { color: colors.ink },
-  pressed: { opacity: 0.72 },
+  pressed: { opacity: 0.9 },
   steps: { gap: 14 },
   step: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
   stepNumber: {
