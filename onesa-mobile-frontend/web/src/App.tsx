@@ -755,7 +755,7 @@ export default function App() {
           </p>
           <a href="/internal/">Staff sign-in</a>
           <a
-            href="https://github.com/DruHustle/onesa-ug/tree/main/onesa-mobile"
+            href="https://github.com/DruHustle/onesa-mobile"
             target="_blank"
             rel="noreferrer"
           >

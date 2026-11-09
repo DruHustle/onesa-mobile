@@ -99,7 +99,7 @@ adb -s "$ONESA_TEST_SERIAL" reverse tcp:8081 tcp:8081
 adb -s "$ONESA_TEST_SERIAL" install /absolute/path/to/app-debug.apk
 ```
 
-From `onesa-mobile/onesa-mobile-frontend/mobile/`, using the same source revision and Node 24.22.1:
+From `onesa-mobile-frontend/mobile/` in the standalone repository, using the same source revision and Node 24.22.1:
 
 ```sh
 npm ci

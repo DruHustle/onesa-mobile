@@ -2,7 +2,7 @@
 
 Decision date: **5 November 2026**. Current source implements a **single-instance hardware and operations pilot**. It includes persistent authenticated workflows and a production identity configuration path. Actual telecommunications, subscriber registration and payment providers are not commissioned.
 
-Canonical location: `DruHustle/onesa-ug/onesa-mobile`. Packages remain independently installable/buildable; the website and native app use HTTP contracts, not cross-package runtime imports.
+Canonical location: `DruHustle/onesa-mobile`. Packages remain independently installable/buildable; the website and native app use HTTP contracts, not cross-package runtime imports.
 
 ## Implemented application topology
 

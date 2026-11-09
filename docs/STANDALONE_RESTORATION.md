@@ -10,7 +10,7 @@ The owner requested that Onesa products return to their existing standalone repo
 - Imported Git tree: `50fb9c7aadda2e6df2acaa77ee1db6800b3409d6`.
 - The prior standalone repository contained a README-only retirement stub. The source commit and all monorepo refs are preserved in the migration backup.
 
-Application code, dependencies and runtime behavior are preserved. The changes for standalone operation are repository references and build paths, root-owned GitHub workflows, and relocation of the Portal identity-provider qualification responsibility to Portal. The old generated workflow templates are removed; the workflows in `.github/workflows/` are maintained directly. Existing public-runner/visibility guards remain in place.
+Application features, dependencies and runtime service contracts are preserved. The changes for standalone operation are repository references (including the public website's source link) and build paths, root-owned GitHub workflows, and relocation of the Portal identity-provider qualification responsibility to Portal. The old generated workflow templates are removed; the workflows in `.github/workflows/` are maintained directly. Existing public-runner/visibility guards remain in place.
 
 ## Qualification ownership
 

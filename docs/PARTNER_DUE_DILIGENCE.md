@@ -2,7 +2,7 @@
 
 **Decision date and source check: 5 November 2026.**
 
-Source location: `DruHustle/onesa-ug`, application directory `onesa-mobile/`.
+Source location: `DruHustle/onesa-mobile`, at the repository root.
 
 Use this checklist to obtain reviewable answers before committing to a live pilot. It records questions and proposed responsibilities; it does not represent an existing agreement. No outreach, application or customer onboarding was performed in preparing it.
 

@@ -2,7 +2,7 @@
 
 **Decision date and source check: 5 November 2026.**
 
-Source location: `DruHustle/onesa-ug`, application directory `onesa-mobile/`.
+Source location: `DruHustle/onesa-mobile`, at the repository root.
 
 Status: a proposed Zimbabwean mobile service and development foundation. Commercial terms, licences, coverage, tariffs and satellite availability remain subject to verification. This brief does not announce a network launch or an operator partnership.
 
