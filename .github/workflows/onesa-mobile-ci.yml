@@ -1,0 +1,172 @@
+name: Onesa Mobile qualification
+'on':
+  push:
+    branches:
+    - main
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: onesa-mobile-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - name: Mobile public, customer and staff web
+          directory: onesa-mobile-frontend/web
+          command: npm test && npm run build
+        - name: Mobile API types and HTTP contracts
+          directory: onesa-mobile-backend
+          command: npm run check
+        - name: Native app types and JS bundles
+          directory: onesa-mobile-frontend/mobile
+          command: npm run verify
+    defaults:
+      run:
+        working-directory: ${{ matrix.directory }}
+    steps:
+    - name: Verify hosted execution, visibility and included-allowance policy
+      env:
+        GH_TOKEN: ${{ github.token }}
+        EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+        PRIVATE_VALIDATION_ENABLED: ${{ vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED }}
+      run: |
+        test "$RUNNER_ENVIRONMENT" = github-hosted
+        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq ".private")
+        test "$actual" = "$EXPECTED_PRIVATE" || { echo "Repository visibility changed"; exit 1; }
+        if [ "$actual" = true ] && [ "$PRIVATE_VALIDATION_ENABLED" != true ]; then
+          echo "Private hosted verification requires explicit included-allowance opt-in"
+          exit 1
+        fi
+      working-directory: .
+    - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      with:
+        persist-credentials: false
+    - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+      with:
+        node-version: 24.22.1
+        cache: npm
+        cache-dependency-path: ${{ matrix.directory }}/package-lock.json
+    - run: npm ci --no-audit --no-fund
+    - name: Verify package
+      env:
+        CI: '1'
+        EXPO_NO_TELEMETRY: '1'
+      run: ${{ matrix.command }}
+  runtime:
+    name: Container restart and encrypted recovery
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      MOBILE_CI_PROJECT: onesa-mobile-ci-${{ github.run_id }}-${{ github.run_attempt }}
+      MOBILE_LAB_ORIGIN: http://localhost:8080
+    defaults:
+      run:
+        working-directory: .
+    steps:
+    - name: Verify hosted execution, visibility and included-allowance policy
+      env:
+        GH_TOKEN: ${{ github.token }}
+        EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+        PRIVATE_VALIDATION_ENABLED: ${{ vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED }}
+      run: |
+        test "$RUNNER_ENVIRONMENT" = github-hosted
+        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq ".private")
+        test "$actual" = "$EXPECTED_PRIVATE" || { echo "Repository visibility changed"; exit 1; }
+        if [ "$actual" = true ] && [ "$PRIVATE_VALIDATION_ENABLED" != true ]; then
+          echo "Private hosted verification requires explicit included-allowance opt-in"
+          exit 1
+        fi
+      working-directory: .
+    - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      with:
+        persist-credentials: false
+    - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+      with:
+        node-version: 24.22.1
+        cache: npm
+        cache-dependency-path: onesa-mobile-backend/package-lock.json
+    - name: Install backend test dependencies
+      working-directory: onesa-mobile-backend
+      run: npm ci --no-audit --no-fund
+    - name: Restore drill, hostile archive and recovery selection tests
+      run: node --test scripts/tests/*.test.mjs
+    - name: Validate lab Compose configuration
+      run: docker compose -p "$MOBILE_CI_PROJECT" -f infra/runtime/compose.lab.yaml config --quiet
+    - name: Build isolated lab and recovery tool
+      run: |
+        docker compose -p "$MOBILE_CI_PROJECT" -f infra/runtime/compose.lab.yaml build --pull
+        docker build --pull -f infra/runtime/recovery.Dockerfile -t onesa-mobile-recovery:ci .
+    - name: Start healthy lab
+      run: docker compose -p "$MOBILE_CI_PROJECT" -f infra/runtime/compose.lab.yaml up -d --wait --wait-timeout
+        120
+    - name: Verify authentication, persistence and commercial hold
+      run: node scripts/container-smoke.mjs
+    - name: Remove this job's disposable lab
+      if: always()
+      run: docker compose -p "$MOBILE_CI_PROJECT" -f infra/runtime/compose.lab.yaml down --volumes --remove-orphans
+  browser:
+    name: Synthetic customer and hardware browser journeys
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: .
+    steps:
+    - name: Verify hosted execution, visibility and included-allowance policy
+      env:
+        GH_TOKEN: ${{ github.token }}
+        EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+        PRIVATE_VALIDATION_ENABLED: ${{ vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED }}
+      run: |
+        test "$RUNNER_ENVIRONMENT" = github-hosted
+        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq ".private")
+        test "$actual" = "$EXPECTED_PRIVATE" || { echo "Repository visibility changed"; exit 1; }
+        if [ "$actual" = true ] && [ "$PRIVATE_VALIDATION_ENABLED" != true ]; then
+          echo "Private hosted verification requires explicit included-allowance opt-in"
+          exit 1
+        fi
+      working-directory: .
+    - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      with:
+        persist-credentials: false
+    - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+      with:
+        node-version: 24.22.1
+        cache: npm
+        cache-dependency-path: |
+          package-lock.json
+          onesa-mobile-backend/package-lock.json
+          onesa-mobile-frontend/web/package-lock.json
+    - name: Install pinned browser test library
+      run: npm ci --ignore-scripts --no-audit --no-fund
+    - name: Install API dependencies
+      working-directory: onesa-mobile-backend
+      run: npm ci --no-audit --no-fund
+    - name: Build web app
+      working-directory: onesa-mobile-frontend/web
+      run: |
+        npm ci --no-audit --no-fund
+        npm run build
+    - name: Install matching Chromium
+      run: npx --no-install playwright install --only-shell chromium
+    - name: Exercise real local UI and API with disposable synthetic data
+      run: npm run test:browser
+    - name: Retain synthetic screenshots and qualification summary
+      if: always()
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: onesa-mobile-browser-${{ github.run_id }}-${{ github.run_attempt }}
+        path: |
+          .validation/browser/*.png
+          .validation/browser/qualification.json
+        if-no-files-found: ignore
+        include-hidden-files: true
+        retention-days: 7

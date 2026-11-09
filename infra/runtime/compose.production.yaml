@@ -1,0 +1,26 @@
+# Configuration candidate only. An approved HTTPS ingress and registered Mobile identity client are required.
+services:
+  api:
+    environment:
+      APP_MODE: production
+      PUBLIC_ORIGIN: '${MOBILE_PUBLIC_ORIGIN:?Set the approved HTTPS origin}'
+      CORS_ALLOWED_ORIGINS: '${MOBILE_PUBLIC_ORIGIN:?Set the approved HTTPS origin}'
+      ONESA_ISSUER: '${MOBILE_ONESA_ISSUER:?Set the approved Onesa issuer}'
+      ONESA_CLIENT_ID: '${MOBILE_ONESA_CLIENT_ID:?Set the registered Mobile client ID}'
+      ONESA_CLIENT_SECRET_FILE: /run/secrets/onesa-client-secret
+      AUTH_ENCRYPTION_KEY_FILE: /run/secrets/auth-encryption-key
+    volumes: !override
+      - mobile-production-data:/app/var
+    secrets:
+      - onesa-client-secret
+      - auth-encryption-key
+networks:
+  private:
+    internal: false
+volumes:
+  mobile-production-data:
+secrets:
+  onesa-client-secret:
+    file: '${MOBILE_ONESA_SECRET_FILE:?Set a protected Mobile client secret file}'
+  auth-encryption-key:
+    file: '${MOBILE_AUTH_KEY_FILE:?Set a protected 64-hex authentication encryption key file}'
