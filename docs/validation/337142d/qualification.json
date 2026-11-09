@@ -1,0 +1,196 @@
+{
+  "kind": "onesa-mobile-browser-qualification",
+  "generatedAt": "2026-11-05T23:23:24.083Z",
+  "data": "synthetic-only",
+  "providerActions": false,
+  "result": "passed",
+  "checks": [
+    "public connectivity explanations and keyboard FAQ work",
+    "public reflows at 320, 390, 768 and 1440 pixels",
+    "public retains page reflow with twice-size text",
+    "workspace skip navigation is keyboard operable and hidden when unfocused",
+    "customer-application reflows at 320, 390, 768 and 1440 pixels",
+    "customer application, support conversation, account request and private export work through the UI",
+    "customer reflows at 320, 390, 768 and 1440 pixels",
+    "customer retains page reflow with twice-size text",
+    "hardware-form reflows at 320, 390, 768 and 1440 pixels",
+    "duplicate hardware input retains an accessible focused error",
+    "hardware site, inventory, receipt and all seven commissioning checks work through the UI",
+    "hardware reflows at 320, 390, 768 and 1440 pixels",
+    "hardware retains page reflow with twice-size text",
+    "trial-result reflows at 320, 390, 768 and 1440 pixels",
+    "manual trial form rejects omitted authorization and captures four matching evidence revisions",
+    "trials reflows at 320, 390, 768 and 1440 pixels",
+    "a signed-in customer cannot open operations records or staff actions",
+    "a completed mutation delivered after client expiry cannot restore private data or show a stale success",
+    "an unavailable account service has a working retry and never invents a signed-in state",
+    "sign-out removes private hardware records from the rendered workspace"
+  ],
+  "layouts": [
+    {
+      "surface": "public",
+      "width": 320,
+      "overflow": false
+    },
+    {
+      "surface": "public",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "surface": "public",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "surface": "public",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "surface": "public",
+      "width": 390,
+      "textScale": 2,
+      "overflow": false
+    },
+    {
+      "surface": "customer-application",
+      "width": 320,
+      "overflow": false
+    },
+    {
+      "surface": "customer-application",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "surface": "customer-application",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "surface": "customer-application",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "surface": "customer",
+      "width": 320,
+      "overflow": false
+    },
+    {
+      "surface": "customer",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "surface": "customer",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "surface": "customer",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "surface": "customer",
+      "width": 390,
+      "textScale": 2,
+      "overflow": false
+    },
+    {
+      "surface": "hardware-form",
+      "width": 320,
+      "overflow": false
+    },
+    {
+      "surface": "hardware-form",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "surface": "hardware-form",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "surface": "hardware-form",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "surface": "hardware",
+      "width": 320,
+      "overflow": false
+    },
+    {
+      "surface": "hardware",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "surface": "hardware",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "surface": "hardware",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "surface": "hardware",
+      "width": 390,
+      "textScale": 2,
+      "overflow": false
+    },
+    {
+      "surface": "trial-result",
+      "width": 320,
+      "overflow": false
+    },
+    {
+      "surface": "trial-result",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "surface": "trial-result",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "surface": "trial-result",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "surface": "trials",
+      "width": 320,
+      "overflow": false
+    },
+    {
+      "surface": "trials",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "surface": "trials",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "surface": "trials",
+      "width": 1440,
+      "overflow": false
+    }
+  ],
+  "engine": "151.0.7922.34",
+  "limitations": [
+    "Automated Chromium on loopback, not physical handset or native UI qualification.",
+    "Synthetic accepted evidence exercises software checks; no operator/regulatory permission is established.",
+    "Local static gateway is a test harness; production hosting is verified separately.",
+    "Client expiry is clock-emulated and a completed response is deliberately queued to exercise the session race."
+  ]
+}

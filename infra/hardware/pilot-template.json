@@ -1,0 +1,566 @@
+{
+  "schemaVersion": 2,
+  "kind": "onesa-mobile-pilot-plan",
+  "preparedOn": "2026-11-05",
+  "country": "ZW",
+  "environment": "lab",
+  "status": "planning",
+  "purchased": false,
+  "serviceEnabled": false,
+  "networkActionExecuted": false,
+  "description": "Planning checklist only. This is not an API import, router configuration, provisioning manifest, purchase order, spectrum permission or evidence of installed hardware.",
+  "references": {
+    "hardwareRunbook": "../../docs/HARDWARE_PILOT.md",
+    "regulatoryMatrix": "../../docs/REGULATORY_MATRIX.md",
+    "engineeringReview": "../../docs/reviews/TELECOM_REVIEW.md",
+    "physicalBench": "../../docs/PHYSICAL_BENCH.md"
+  },
+  "site": {
+    "planningId": "PILOT-SITE-01",
+    "purpose": "device_bench",
+    "status": "planned",
+    "country": "ZW",
+    "area": null,
+    "custodian": null,
+    "approvedLocationRef": null,
+    "existingInternetRef": null,
+    "powerSurveyRef": null,
+    "addressCollisionCheckRef": null,
+    "targetNetworkBackupHours": 2,
+    "note": "Two hours is a proposed engineering target. Confirm the location, measured load, local approvals and budget before selecting equipment."
+  },
+  "phases": [
+    {
+      "id": "ip_bench",
+      "status": "planned",
+      "purpose": "Inventory, isolated local network and synthetic application acceptance using existing authorized internet."
+    },
+    {
+      "id": "host_acceptance",
+      "status": "blocked",
+      "purpose": "Authorized host SIM/eSIM, terrestrial functions and provider integration acceptance."
+    },
+    {
+      "id": "direct_to_cell",
+      "status": "blocked",
+      "purpose": "Authorized Zimbabwe handset-to-satellite acceptance for explicitly entitled services and devices."
+    },
+    {
+      "id": "optional_broadband",
+      "status": "not_selected",
+      "purpose": "Separate Starlink terminal IP/Wi-Fi path test; never evidence of handset direct-to-cell service."
+    }
+  ],
+  "assets": [
+    {
+      "planningId": "PLAN-WORKSTATION",
+      "assetType": "workstation",
+      "quantity": 1,
+      "phase": "ip_bench",
+      "state": "planned",
+      "purchased": false,
+      "referenceModel": null,
+      "selection": "Reuse first; encrypted supported workstation. Local iOS compilation requires a Mac compatible with the selected stable Xcode. Suggested sizing: 16 GB RAM and 512 GB SSD."
+    },
+    {
+      "planningId": "PLAN-ROUTER",
+      "assetType": "router",
+      "quantity": 1,
+      "phase": "ip_bench",
+      "state": "planned",
+      "purchased": false,
+      "referenceModel": "MikroTik L009UiGS-RM",
+      "selection": "Reference candidate, not an approved purchase. Verify local approval, supported firmware, firewall/VLAN behavior, recovery and measured capacity. Passive PoE is not universal AP power."
+    },
+    {
+      "planningId": "PLAN-AP",
+      "assetType": "access_point",
+      "quantity": 1,
+      "phase": "ip_bench",
+      "state": "planned",
+      "purchased": false,
+      "referenceModel": null,
+      "selection": "Qualified managed Wi-Fi AP with separate management/test/visitor networks and compatible approved power supply. Optional for a wired-only initial bench."
+    },
+    {
+      "planningId": "PLAN-IPHONE",
+      "assetType": "iphone",
+      "quantity": 1,
+      "phase": "ip_bench",
+      "state": "planned",
+      "purchased": false,
+      "referenceModel": null,
+      "selection": "Borrow/reuse an unlocked supported iPhone. Record exact regional SKU, iOS and carrier settings. Host acceptance for radio tests remains unverified."
+    },
+    {
+      "planningId": "PLAN-ANDROID-MAIN",
+      "assetType": "android_phone",
+      "quantity": 1,
+      "phase": "ip_bench",
+      "state": "planned",
+      "purchased": false,
+      "referenceModel": null,
+      "selection": "Representative mainstream supported Android phone; qualify exact SKU, firmware and host SIM/eSIM configuration later."
+    },
+    {
+      "planningId": "PLAN-ANDROID-LOWER-COST",
+      "assetType": "android_phone",
+      "quantity": 1,
+      "phase": "ip_bench",
+      "state": "planned",
+      "purchased": false,
+      "referenceModel": null,
+      "selection": "Lower-cost phone representative of pilot customers, within app OS support, for accessibility/resource/offline acceptance. No satellite compatibility assumed."
+    },
+    {
+      "planningId": "PLAN-TABLET",
+      "assetType": "tablet",
+      "quantity": 1,
+      "phase": "ip_bench",
+      "state": "planned",
+      "purchased": false,
+      "referenceModel": null,
+      "selection": "Borrow/share one supported iPad or Android tablet; extend matrix according to actual pilot devices."
+    },
+    {
+      "planningId": "PLAN-UPS",
+      "assetType": "ups",
+      "quantity": 1,
+      "phase": "ip_bench",
+      "state": "planned",
+      "purchased": false,
+      "referenceModel": null,
+      "selection": "Select after measuring network load, startup and target runtime; confirm compatible supplies and controlled restart. No capacity or VA rating selected yet."
+    },
+    {
+      "planningId": "PLAN-CABLING",
+      "assetType": "other",
+      "quantity": 1,
+      "phase": "ip_bench",
+      "state": "planned",
+      "purchased": false,
+      "referenceModel": null,
+      "selection": "One kit: six labelled Cat6 leads, appropriate workstation Ethernet adapter, phone USB cables and local console cable if supported."
+    },
+    {
+      "planningId": "PLAN-POWER-METER",
+      "assetType": "other",
+      "quantity": 1,
+      "phase": "ip_bench",
+      "state": "planned",
+      "purchased": false,
+      "referenceModel": null,
+      "selection": "Borrow/reuse a suitably rated enclosed power meter. A competent operator records actual input consumption and included loads; no mains wiring work is implied."
+    },
+    {
+      "planningId": "PLAN-BACKUP-MEDIUM",
+      "assetType": "other",
+      "quantity": 1,
+      "phase": "ip_bench",
+      "state": "planned",
+      "purchased": false,
+      "referenceModel": null,
+      "selection": "Encrypted removable configuration/lab backup medium with separate recovery-key custody; no real subscriber records until hosting and retention controls are accepted."
+    },
+    {
+      "planningId": "PLAN-POWER-BANKS",
+      "assetType": "other",
+      "quantity": 2,
+      "phase": "ip_bench",
+      "state": "planned",
+      "purchased": false,
+      "referenceModel": null,
+      "selection": "Compatible manufacturer-approved phone charging supplies; useful for later authorized field trials."
+    },
+    {
+      "planningId": "PLAN-HOST-SIMS",
+      "assetType": "test_sim",
+      "quantity": 6,
+      "phase": "host_acceptance",
+      "state": "planned",
+      "purchased": false,
+      "referenceModel": null,
+      "selection": "Host-approved test SIMs for active, inactive, replacement and negative-test cases. SIM identifiers and secrets belong outside this repository."
+    },
+    {
+      "planningId": "PLAN-OPTIONAL-STARLINK",
+      "assetType": "satellite_terminal",
+      "quantity": 0,
+      "phase": "optional_broadband",
+      "state": "planned",
+      "purchased": false,
+      "referenceModel": null,
+      "selection": "No terminal selected. Consider one only after a separate IP-path requirement, Zimbabwe terms/permission, equipment approval, kit/wiring and installation assessment. This is not direct-to-cell."
+    }
+  ],
+  "conditionalEntitlements": [
+    {
+      "id": "HOST-ESIM-TEST-PROFILES",
+      "maximumProposedActivations": 6,
+      "status": "unverified",
+      "provider": null,
+      "evidenceRef": null,
+      "note": "No profiles issued. Actual activation secrets must never be stored in this file."
+    },
+    {
+      "id": "HOST-PRIVATE-CONNECTIVITY",
+      "status": "unverified",
+      "provider": null,
+      "evidenceRef": null,
+      "note": "Host must specify interface, security, addressing and any additional equipment."
+    },
+    {
+      "id": "D2C-SUBSCRIBER-SERVICE",
+      "status": "unverified",
+      "provider": null,
+      "evidenceRef": null,
+      "note": "No Zimbabwe host, Onesa wholesale access, handset list or supported functions have been established."
+    }
+  ],
+  "commissioningCheckTemplate": [
+    {
+      "check": "asset_label",
+      "result": "not_run",
+      "evidenceRef": null
+    },
+    {
+      "check": "power",
+      "result": "not_run",
+      "evidenceRef": null
+    },
+    {
+      "check": "firmware",
+      "result": "not_run",
+      "evidenceRef": null
+    },
+    {
+      "check": "management_security",
+      "result": "not_run",
+      "evidenceRef": null
+    },
+    {
+      "check": "equipment_approval",
+      "result": "not_run",
+      "evidenceRef": null
+    },
+    {
+      "check": "connectivity",
+      "result": "not_run",
+      "evidenceRef": null
+    },
+    {
+      "check": "recovery",
+      "result": "not_run",
+      "evidenceRef": null
+    }
+  ],
+  "gates": [
+    {
+      "gate": "telecom_licence",
+      "status": "unverified",
+      "evidence": []
+    },
+    {
+      "gate": "host_agreement",
+      "status": "unverified",
+      "evidence": []
+    },
+    {
+      "gate": "subscriber_registration",
+      "status": "unverified",
+      "evidence": []
+    },
+    {
+      "gate": "data_protection",
+      "status": "unverified",
+      "evidence": [],
+      "note": "Must cover controller/DPO, subscriber-data location, foreign hosting conditions, local key custody, consent, backups and recovery."
+    },
+    {
+      "gate": "equipment_approval",
+      "status": "unverified",
+      "evidence": []
+    },
+    {
+      "gate": "approved_tariff",
+      "status": "unverified",
+      "evidence": []
+    },
+    {
+      "gate": "numbering_interconnect",
+      "status": "unverified",
+      "evidence": []
+    },
+    {
+      "gate": "emergency_services",
+      "status": "unverified",
+      "evidence": []
+    },
+    {
+      "gate": "satellite_authorization",
+      "status": "unverified",
+      "evidence": []
+    },
+    {
+      "gate": "satellite_entitlement",
+      "status": "unverified",
+      "evidence": []
+    },
+    {
+      "gate": "device_acceptance",
+      "status": "unverified",
+      "evidence": []
+    },
+    {
+      "gate": "operational_acceptance",
+      "status": "unverified",
+      "evidence": []
+    }
+  ],
+  "acceptanceTests": [
+    {
+      "id": "HW-01",
+      "phase": "ip_bench",
+      "name": "Inventory and model qualification",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "HW-02",
+      "phase": "ip_bench",
+      "name": "Management isolation across IPv4 and IPv6",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "HW-03",
+      "phase": "ip_bench",
+      "name": "Measured backup runtime and controlled restart",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "HW-04",
+      "phase": "ip_bench",
+      "name": "Configuration restore and recovery access",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "HW-05",
+      "phase": "ip_bench",
+      "name": "Native application install and device acceptance",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "HW-06",
+      "phase": "ip_bench",
+      "name": "Intermittent connectivity and duplicate prevention",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "NET-01",
+      "phase": "host_acceptance",
+      "name": "Subscriber registration and host-confirmed activation",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "NET-02",
+      "phase": "host_acceptance",
+      "name": "Contracted terrestrial service functions",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "NET-03",
+      "phase": "host_acceptance",
+      "name": "SIM and eSIM recovery controls",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "NET-04",
+      "phase": "host_acceptance",
+      "name": "Authoritative usage and billing reconciliation",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "SAT-01",
+      "phase": "direct_to_cell",
+      "name": "Exact eligibility and evidenced satellite attachment",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "SAT-02",
+      "phase": "direct_to_cell",
+      "name": "Each contracted satellite function and recovery",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "EMG-01",
+      "phase": "host_acceptance",
+      "name": "Approved emergency responsibility and test facility",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "OPS-01",
+      "phase": "ip_bench",
+      "name": "Incident ownership and rollback drill",
+      "status": "not_run",
+      "evidence": []
+    }
+  ],
+  "trialRecordingRules": {
+    "supportedPaths": [
+      "terrestrial",
+      "direct_to_cell",
+      "dish_wifi"
+    ],
+    "supportedSources": [
+      "manual_field_record",
+      "lab_simulator"
+    ],
+    "plannedSource": null,
+    "testResultsRecorded": false,
+    "instructions": "Retain approved device/network evidence for real observations. A simulator, UI label, completed form or dish connection does not demonstrate D2C attachment. The operations software records observations and never configures or transmits RF."
+  },
+  "exclusions": [
+    "No assumed PamoFi inventory or reuse approval",
+    "No local cellular base station or mobile core purchase in this Light MVNO bench plan",
+    "No inferred carrier partnership, spectrum allocation, Zimbabwe satellite coverage or Starlink API",
+    "No verified supplier quotation or retail tariff",
+    "No subscriber identifiers, credentials, actual private site location or device secrets"
+  ],
+  "benchNetworkPlan": {
+    "status": "planned",
+    "actualConfigurationApplied": false,
+    "stageA": "Mac and Android USB session with loopback lab gateway; no Wi-Fi or router change needed.",
+    "stageB": "Isolated multi-device network after local inventory, recovery and exact interface/firewall review.",
+    "subnetAllocated": false,
+    "ipRanges": null,
+    "proposedVlans": {
+      "management": 10,
+      "test": 20,
+      "visitor": 30
+    },
+    "referencePortMap": [
+      {
+        "port": "Ether1",
+        "purpose": "authorized upstream handoff"
+      },
+      {
+        "port": "Ether2",
+        "purpose": "authorized administrator access"
+      },
+      {
+        "port": "Ether3",
+        "purpose": "optional application host; only qualified gateway exposed"
+      },
+      {
+        "port": "Ether4",
+        "purpose": "managed AP tagged trunk after model-specific review"
+      },
+      {
+        "port": "unused ports",
+        "purpose": "unpatched and disabled; passive PoE off until exact load approved"
+      }
+    ],
+    "requiredChecks": [
+      "address and VPN/Docker collision check",
+      "IPv4 and IPv6 isolation",
+      "test and visitor client isolation",
+      "DNS and time",
+      "protected configuration restore",
+      "local recovery access"
+    ],
+    "gatewayNote": "The supplied lab gateway binds to 127.0.0.1:8080. Wi-Fi clients require a separately reviewed lab-interface listener or HTTPS gateway. Do not expose database or administration."
+  },
+  "powerAssessment": {
+    "status": "not_measured",
+    "inventoryPowerMeaning": "Asset powerWatts is an explicitly recorded nameplate/rating, not measured load. Unknown stays null; do not assume zero.",
+    "measurementBoundary": null,
+    "includedAssetRefs": [],
+    "excludedLoads": [],
+    "meterRef": null,
+    "measuredAt": null,
+    "measuredBy": null,
+    "idleWatts": null,
+    "averageWatts": null,
+    "peakWatts": null,
+    "measurementEvidenceRef": null,
+    "targetHours": 2,
+    "usableBatteryFraction": null,
+    "conversionEfficiency": null,
+    "designMargin": null,
+    "requiredNominalWh": null,
+    "supplySelected": false,
+    "runtimeTestResult": "not_run",
+    "runtimeEvidenceRef": null,
+    "note": "No measurement, battery size or runtime guarantee is established. Calculate only after obtaining the actual load and manufacturer assumptions; prove with a controlled power interruption."
+  },
+  "procurement": {
+    "status": "inventory_first",
+    "spendingAuthorized": false,
+    "currency": null,
+    "budgetMinor": null,
+    "supplierQuoteRefs": [],
+    "quoteFields": [
+      "exact model and revision",
+      "local type-approval or applicability evidence",
+      "currency and tax treatment",
+      "delivery/import charges",
+      "lead time",
+      "warranty and support",
+      "quote validity",
+      "return/replacement terms"
+    ],
+    "approvedPurchaseRef": null
+  },
+  "trialAuthorityPolicy": {
+    "type": "internal_record_acceptance_policy",
+    "scope": [
+      "country",
+      "operator",
+      "path",
+      "deviceScope"
+    ],
+    "manualPassRequiredGates": {
+      "terrestrial": [
+        "host_agreement",
+        "equipment_approval"
+      ],
+      "direct_to_cell": [
+        "host_agreement",
+        "equipment_approval",
+        "satellite_authorization",
+        "satellite_entitlement"
+      ],
+      "dish_wifi": [
+        "host_agreement",
+        "equipment_approval"
+      ]
+    },
+    "directToCellPrimaryAssetKinds": [
+      "android_phone",
+      "iphone"
+    ],
+    "deviceAcceptanceIsAnOutcome": true,
+    "requiredReferences": [
+      "approved test plan and observation window",
+      "exact handset SKU and OS/carrier software",
+      "non-secret host profile/account reference",
+      "actual bearer evidence",
+      "approved pass criteria",
+      "permission evidence IDs/revisions valid for the observation and review"
+    ],
+    "syntheticResultsConferNoAuthority": true,
+    "note": "These are internal evidence prerequisites, not POTRAZ-prescribed database fields or proof of authority to transmit. Verify actual documents and conditions before a physical test. A passing observation never enables commercial service."
+  }
+}

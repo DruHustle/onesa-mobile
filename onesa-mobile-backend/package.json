@@ -1,0 +1,29 @@
+{
+  "name": "@onesa-mobile/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Persistent hardware pilot and customer operations API for Onesa Mobile.",
+  "engines": {
+    "node": ">=24.12 <25"
+  },
+  "scripts": {
+    "start": "node src/server.ts",
+    "dev": "node --watch src/server.ts",
+    "test": "node --test test/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm test",
+    "api:generate": "node scripts/generate-openapi.ts",
+    "api:check": "node scripts/generate-openapi.ts --check"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/pdfkit": "^0.17.7",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "openid-client": "^6.8.9",
+    "pdfkit": "^0.17.2",
+    "zod": "^4.6.7"
+  }
+}
