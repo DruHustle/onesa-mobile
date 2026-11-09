@@ -16,6 +16,8 @@ Application code, dependencies and runtime behavior are preserved. The changes f
 
 Mobile's workflow runs the web tests/build, backend types and HTTP contracts, native types/tests/JS exports, container restart/recovery and synthetic browser journeys. The separate native workflow retains Android debug and unsigned iOS simulator compilation. These workflows reference only files in this repository.
 
+The restoration's hosted Android jobs encountered HTTP 504 responses while downloading Gradle and Kotlin, followed by the wrapper's 10-second read timeout. The wrapper now waits up to 60 seconds for network operations. The Android job retries recognized transient download failures at most twice using the same job cache; other build failures keep their nonzero exit status. Toolchain versions, application source and dependency lockfiles are unchanged. A successful native build is still required; a retry alone is not qualification.
+
 The former monorepo `portal_identity` job exercised Portal's migration 015 and identity-provider tests. That source and check belong in `DruHustle/onesa-company-portal`; they must be retained there when Portal is restored. Mobile continues to test its OIDC client, recovery and grant checks locally. No live identity client or backend is commissioned by moving source.
 
 ## Existing Vercel project
