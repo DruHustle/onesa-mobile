@@ -1,12 +1,14 @@
 .mw-root {
   --mw-forest: #103c35;
+  --mw-blue: #075cf5;
+  --mw-blue-hover: #0647c7;
   --mw-mint: #c7f5b5;
-  --mw-text: #173c35;
-  --mw-muted: #54665f;
-  --mw-line: #dce5df;
+  --mw-text: #143b34;
+  --mw-muted: #5c716a;
+  --mw-line: #dae3da;
   --mw-control-line: #718a78;
   --mw-paper: #ffffff;
-  --mw-ground: #f3f6f1;
+  --mw-ground: #f8f9f5;
   min-height: 100vh;
   background: var(--mw-ground);
   color: var(--mw-text);
@@ -84,8 +86,8 @@
 .mw-summary-band strong { display: block; color: #fff; font-size: 22px; font-weight: 600; line-height: 1.3; letter-spacing: -.025em; font-variant-numeric: tabular-nums; }
 .mw-summary-band > button:hover { background: #214d42; }
 .mw-root .mw-summary-band > button:focus-visible { outline-color: var(--mw-mint); }
-.mw-root .mw-button { display: inline-flex; justify-content: center; align-items: center; gap: 8px; min-height: 44px; width: auto; max-width: 100%; border: 1px solid var(--mw-forest); border-radius: 8px; background: var(--mw-forest); color: #fff; padding: 10px 16px; font-size: 14px; line-height: 1.4; font-weight: 600; text-align: center; text-decoration: none; white-space: normal; }
-.mw-root .mw-button:hover:not(:disabled) { background: #205348; }
+.mw-root .mw-button { display: inline-flex; justify-content: center; align-items: center; gap: 8px; min-height: 44px; width: auto; max-width: 100%; border: 1px solid var(--mw-blue); border-radius: 8px; background: var(--mw-blue); color: #fff; padding: 10px 16px; font-size: 14px; line-height: 1.4; font-weight: 600; text-align: center; text-decoration: none; white-space: normal; }
+.mw-root .mw-button:hover:not(:disabled) { background: var(--mw-blue-hover); }
 .mw-root .mw-button-secondary { background: #fff; color: var(--mw-forest); border-color: var(--mw-control-line); }
 .mw-root .mw-button-secondary:hover:not(:disabled) { background: #edf4e8; }
 .mw-root .mw-button-danger { color: #953b31; border-color: #c08c80; }

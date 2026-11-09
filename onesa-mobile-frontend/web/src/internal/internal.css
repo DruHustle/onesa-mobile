@@ -1,4 +1,4 @@
-.ops-root { --ops-ink:#103c35; --ops-muted:#5c716a; --ops-line:#dce5dc; --ops-control-line:#718a78; --ops-mint:#c7f5b5; min-height:100svh; background:#f3f6f1; color:var(--ops-ink); font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; line-height:1.5; }
+.ops-root { --ops-ink:#103c35; --ops-blue:#075cf5; --ops-blue-hover:#0647c7; --ops-muted:#5c716a; --ops-line:#dae3da; --ops-control-line:#718a78; --ops-mint:#c7f5b5; min-height:100svh; background:#f8f9f5; color:var(--ops-ink); font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; line-height:1.5; }
 .ops-root *, .ops-root *::before, .ops-root *::after { box-sizing:border-box; }
 .ops-root h1, .ops-root h2, .ops-root h3, .ops-root p { margin:0; }
 .ops-root button, .ops-root input, .ops-root select { font:inherit; }
@@ -40,8 +40,8 @@
 .ops-root .ops-badge { font-size:.875rem; font-weight:650; line-height:1.4; padding:5px 8px; border-radius:5px; background:#eef2ec; color:#516453; display:inline-block; width:fit-content; }
 .ops-root .ops-badge-amber { color:#79510c; background:#fff1d1; }
 .ops-root .ops-badge-green { color:#246044; background:#e0f1dc; }
-.ops-root .ops-button { display:inline-flex; align-items:center; justify-content:center; min-height:44px; border-radius:7px; padding:9px 13px; background:var(--ops-ink); color:white; font-size:.875rem; font-weight:650; text-align:center; }
-.ops-root .ops-button:hover { background:#245c4f; }
+.ops-root .ops-button { display:inline-flex; align-items:center; justify-content:center; min-height:44px; border-radius:7px; padding:9px 13px; background:var(--ops-blue); color:white; font-size:.875rem; font-weight:650; text-align:center; }
+.ops-root .ops-button:hover { background:var(--ops-blue-hover); }
 .ops-root .ops-button-light { color:var(--ops-ink); background:#e6f0df; }
 .ops-root .ops-button-light:hover { background:#d3e8c9; }
 .ops-root .ops-text-button { padding:11px 0 0; background:transparent; color:#285d45; font-size:.875rem; font-weight:650; text-align:left; min-height:44px; }

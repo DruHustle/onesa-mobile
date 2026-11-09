@@ -12,6 +12,8 @@
   font-weight: 400;
   line-height: 1.5;
   --ink: #103c35;
+  --blue: #075cf5;
+  --blue-hover: #0647c7;
   --muted: #5c716a;
   --mint: #c7f5b5;
   --line: #dae3da;
@@ -215,11 +217,11 @@ em {
   transform: translateY(-1px);
 }
 .button.primary {
-  background: var(--ink);
+  background: var(--blue);
   color: white;
 }
 .button.primary:hover {
-  background: #20594a;
+  background: var(--blue-hover);
 }
 .button.light {
   background: var(--mint);
@@ -326,7 +328,7 @@ h1 em {
   justify-content: center;
   gap: 18px;
   border-radius: 150px 150px 20px 20px;
-  background: linear-gradient(145deg, #e2ead1, #e9eddb 50%, #f3edda);
+  background: linear-gradient(145deg, #eaf2ff, #e9f7ef 50%, #c7f5b5);
   overflow: hidden;
   padding: 24px 35px 20px;
 }
@@ -558,9 +560,9 @@ h1 em {
   font-size: 0.875rem;
 }
 .path-tabs button[aria-pressed="true"] {
-  background: var(--ink);
+  background: var(--blue);
   color: white;
-  border-color: var(--ink);
+  border-color: var(--blue);
 }
 .connection-panel {
   display: grid;
@@ -964,8 +966,8 @@ dt {
   font-size: 0.875rem;
 }
 .concept-options button.selected {
-  background: var(--ink);
-  border-color: var(--ink);
+  background: var(--blue);
+  border-color: var(--blue);
   color: white;
 }
 .selected-plan {
