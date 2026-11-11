@@ -1,45 +1,26 @@
-import {
-  mkdirSync, constants as fsConstants, lstatSync, openSync,
-  closeSync, fstatSync, fchmodSync,
-} from "node:fs";
-import { dirname } from "node:path";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
-/** SQLite inherits the main file's permissions when it creates WAL/SHM files.
- * Validate every existing companion before creating or changing anything, and
- * make all files private before SQLite can read a journal or write a page. */
+/** Harden files before opening SQLite without disturbing an existing connection.
+ * POSIX releases a process's SQLite advisory locks when ANY descriptor for that
+ * inode closes. A second store must therefore not open/close that file in the
+ * API process, even just to fchmod it. Keep the no-follow checks in a separate
+ * startup-only process whose descriptors cannot release the parent's locks. */
 export function prepareDatabaseFiles(path: string): void {
-  const directory = dirname(path);
-  mkdirSync(directory, { recursive: true, mode: 0o700 });
-  const parent = lstatSync(directory);
-  if (!parent.isDirectory() || parent.isSymbolicLink() || (parent.mode & 0o022) !== 0)
-    throw new Error("The database directory must be a real directory that other users cannot write.");
-  const paths = [path, path + "-wal", path + "-shm", path + "-journal"];
-  for (const candidate of paths) {
-    let info;
-    try { info = lstatSync(candidate); }
-    catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") continue; throw error; }
-    if (!info.isFile() || info.isSymbolicLink() || info.nlink !== 1)
-      throw new Error("The database and its sidecars must be regular files without symbolic or hard links.");
-  }
-  const handles: number[] = [];
-  try {
-    for (const candidate of paths) {
-      let fd: number;
-      try {
-        fd = openSync(candidate,
-          fsConstants.O_RDWR | fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK |
-          (candidate === path ? fsConstants.O_CREAT : 0), 0o600);
-      } catch (error) {
-        if (candidate !== path && (error as NodeJS.ErrnoException).code === "ENOENT") continue;
-        throw error;
-      }
-      handles.push(fd);
-      const info = fstatSync(fd);
-      if (!info.isFile() || info.nlink !== 1)
-        throw new Error("The database and its sidecars must be regular files without symbolic or hard links.");
-    }
-    for (const fd of handles) fchmodSync(fd, 0o600);
-  } finally {
-    for (const fd of handles) closeSync(fd);
-  }
+  if (!path || Buffer.byteLength(path) > 4096 || path.includes("\0"))
+    throw new Error("Invalid database preparation path.");
+  const result = spawnSync(process.execPath, [
+    fileURLToPath(new URL("./database-files-worker.ts", import.meta.url)), path,
+  ], {
+    env: {}, // No application credentials or NODE_OPTIONS are needed by this helper.
+    encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
+    timeout: 30_000, maxBuffer: 16_384,
+  });
+  if (result.error || result.signal)
+    throw new Error("Database file preparation could not complete.");
+  let reply: { ok?: unknown; error?: unknown };
+  try { reply = JSON.parse(result.stdout); }
+  catch { throw new Error("Database file preparation returned an invalid result."); }
+  if (result.status !== 0 || reply.ok !== true)
+    throw new Error(typeof reply.error === "string" ? reply.error : "Database file preparation failed.");
 }
