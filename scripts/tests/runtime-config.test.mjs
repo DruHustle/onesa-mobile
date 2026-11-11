@@ -35,6 +35,7 @@ test('actual Compose merge binds the explicitly selected existing volume and ref
     writeFileSync(keyPath, '0'.repeat(64), {mode: 0o600});
     function config(mode, selectVolume = true) {
       const env = {...process.env, MOBILE_RECOVERY_MODE: mode, MOBILE_RECOVERY_DIRECTORY: dir, MOBILE_RECOVERY_KEY_FILE: keyPath,
+        MOBILE_API_IMAGE: 'sha256:' + 'a'.repeat(64), MOBILE_GATEWAY_IMAGE: 'sha256:' + 'b'.repeat(64),
         MOBILE_PUBLIC_ORIGIN: 'https://mobile.example.test', MOBILE_ONESA_ISSUER: 'https://identity.example.test/api/v1/identity',
         MOBILE_ONESA_CLIENT_ID: 'synthetic-client-reference', MOBILE_ONESA_SECRET_FILE: keyPath, MOBILE_AUTH_KEY_FILE: keyPath};
       delete env.MOBILE_RECOVERY_VOLUME;
@@ -48,6 +49,13 @@ test('actual Compose merge binds the explicitly selected existing volume and ref
       const result = config(mode);
       assert.equal(result.status, 0, 'Compose configuration is valid for ' + mode);
       const value = JSON.parse(result.stdout), source = value.services.recovery.volumes.find(mount => mount.target === '/data').source;
+      if (mode === 'production') {
+        for (const [service, expectedId] of [['api','a'], ['web','b']]) {
+          assert.equal(value.services[service].image, 'sha256:' + expectedId.repeat(64));
+          assert.equal(value.services[service].pull_policy, 'never');
+          assert.equal(value.services[service].build, undefined);
+        }
+      }
       assert.equal(value.volumes[source].external, true, 'Compose must not create an empty source volume');
       assert.equal(value.volumes[source].name, 'synthetic-existing-' + mode + '-volume');
       assert.equal(value.services.recovery.environment.MOBILE_RECOVERY_MODE, mode);

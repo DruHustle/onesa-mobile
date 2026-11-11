@@ -150,6 +150,15 @@ Temporary decrypted snapshots are held in owner-only directories and removed on 
 
 ## Production configuration candidate
 
+Build the API and private gateway on the target Docker daemon from the reviewed commit. The build uses Git archives for both contexts, verifies the OCI source and revision labels, and records the two immutable image IDs. The production overlay uses those local IDs. The public website continues to deploy through Vercel.
+
+```bash
+bash scripts/build-production-runtime.sh "$(git rev-parse HEAD)" /path/to/mobile-runtime-images.env
+set -a
+source /path/to/mobile-runtime-images.env
+set +a
+```
+
 `compose.production.yaml` is an overlay to review and qualify, not evidence of a hosted production service. It switches to a separate `mobile-production-data` volume and requires:
 
 - `MOBILE_PUBLIC_ORIGIN`: approved HTTPS origin.
