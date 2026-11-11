@@ -1,6 +1,6 @@
 export type Surface = 'customer' | 'staff';
 export type Role = 'admin' | 'operations' | 'support' | 'finance' | 'agent' | 'auditor' | 'customer';
-export type Collection = 'sites' | 'assets' | 'trials' | 'gates' | 'applications' | 'tickets' | 'ledger' | 'requests' | 'billingAccounts' | 'audit';
+export type Collection = 'sites' | 'assets' | 'trials' | 'gates' | 'launchInterests' | 'applications' | 'tickets' | 'ledger' | 'requests' | 'billingAccounts' | 'audit';
 export interface User {
   subject: string; displayName: string; role: Role; source: 'lab' | 'onesa';
   mfa: boolean; authenticatedAt: number; expiresAt: number;
@@ -23,7 +23,11 @@ export interface Readiness {
   providerIntegrations: string; notice: string;
   gates: { key: string; label: string; currentEvidence: number }[];
 }
+export interface LaunchInterest extends Item {
+  state: 'registered' | 'withdrawn';
+}
 export interface CustomerData {
+  launchInterest?: LaunchInterest | null;
   profile: { subject: string; displayName: string };
   applications: Item[]; tickets: Item[]; ledger: Item[]; requests: Item[];
   pageLimit: number; counts: Record<string, number>; cursors: Partial<Record<Collection, string | null>>;
@@ -31,6 +35,7 @@ export interface CustomerData {
   status: ServiceStatus;
 }
 export interface StaffData {
+  launchInterests?: LaunchInterest[];
   permissions: string[]; status: ServiceStatus; readiness: Readiness | null;
   sites: Item[]; assets: Item[]; trials: Item[]; gates: Item[];
   applications: Item[]; tickets: Item[]; requests: Item[]; ledger: Item[];

@@ -1,5 +1,22 @@
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
+// Only the production custom domain should reach the commissioned Mobile gateway.
+// Preview deployments and other aliases retain the explicit holding response.
+export function accountRoutes({ VERCEL_ENV, MOBILE_ACCOUNT_GATEWAY_ORIGIN }) {
+  if (VERCEL_ENV !== "production" || !MOBILE_ACCOUNT_GATEWAY_ORIGIN) return [];
+  const gateway = new URL(MOBILE_ACCOUNT_GATEWAY_ORIGIN);
+  if (gateway.protocol !== "https:" || gateway.port || gateway.username || gateway.password ||
+      !gateway.hostname.endsWith(".onesa.eu") || gateway.hostname === "mobile.onesa.eu" ||
+      ![gateway.origin, gateway.origin + "/"].includes(MOBILE_ACCOUNT_GATEWAY_ORIGIN)) {
+    throw new Error("MOBILE_ACCOUNT_GATEWAY_ORIGIN must be the HTTPS origin of the dedicated Onesa Mobile backend gateway.");
+  }
+
+  const has = [{ type: "host", value: { eq: "mobile.onesa.eu" } }];
+  return [
+    { source: "/api", has, destination: gateway.origin + "/api/" },
+    { source: "/api/:path(.*)", has, destination: gateway.origin + "/api/:path" },
+  ];
+}
+
+export const config = {
   "framework": "vite",
   "installCommand": "npm ci",
   "buildCommand": "npm run build",
@@ -53,6 +70,7 @@
     }
   ],
   "rewrites": [
+    ...accountRoutes(process.env),
     { "source": "/api", "destination": "/api/unavailable" },
     { "source": "/api/(.*)", "destination": "/api/unavailable" },
     { "source": "/account", "destination": "/index.html" },
@@ -62,4 +80,4 @@
     { "source": "/preview", "destination": "/index.html" },
     { "source": "/preview/(.*)", "destination": "/index.html" }
   ]
-}
+};

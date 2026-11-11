@@ -18,15 +18,36 @@ function applicationFields(item?:Item):Field[] {
 function applicationPayload(values:Record<string,string>) {
   return {displayName:values.displayName,area:values.area,planId:values.planId,simFormat:values.simFormat,deviceModel:values.deviceModel,consentToPilot:values.consentToPilot==='true'};
 }
+function LaunchInterestPreference({ data, context }: { data: CustomerData; context: WorkspaceContext }) {
+  const interest = data.launchInterest;
+  const registered = interest?.state === 'registered';
+  return <Panel title="Your launch interest" hint={context.mode === 'lab' ? 'Lab preference' : undefined}>
+    <p>{registered
+      ? 'Your interest in Onesa Mobile in Zimbabwe is registered. You can withdraw it at any time.'
+      : 'Tell Onesa you’re interested in mobile service in Zimbabwe. Your account preference helps the team plan the launch.'}</p>
+    <p className="mw-secondary">Registering is free. SIM reservations, subscriptions and payments are closed while service is being prepared.</p>
+    {interest && <p className="mw-secondary">
+      {registered ? 'Registered' : 'Withdrawn'} <DateText value={interest.updatedAt}/>
+    </p>}
+    <MutationButton context={context} action={() => context.mutate(
+      '/v1/account/launch-interest',
+      { interested: !registered, revision: interest?.revision ?? 0 },
+      'POST',
+      registered ? 'Your launch interest has been withdrawn.' : 'Your launch interest has been registered.',
+    )}>{registered ? 'Withdraw interest' : 'Register my interest'}</MutationButton>
+  </Panel>;
+}
 export function CustomerHome({ data, context, go }: { data:CustomerData;context:WorkspaceContext;go:(section:string)=>void }) {
   const application=data.applications.find(a=>a.state!=='declined'),[state,next]=applicationState(application?.state);
   const applicationsOpen=context.mode==='lab';
+  const showLaunchInterest=data.status.capabilities?.launchInterest===true && data.launchInterest!==undefined;
   const openCases=data.tickets.filter(t=>t.status!=='resolved').length;
   return <div className="mw-stack">
     <div className="mw-summary-band"><div><span>Mobile service</span><strong>Not activated</strong></div><div><span>Plan concept</span><strong>{planName(application?.planId)}</strong></div><div><span>Usage</span><strong>Not available</strong></div><div><span>{data.counts?.tickets>data.tickets.length?'Open cases shown':'Open support cases'}</span><strong>{openCases}</strong></div></div>
-    <Panel title="Your next step"><div className="mw-record-line"><div><h3>{!application&&!applicationsOpen?'Applications are not open':String(state)}</h3><p>{!application&&!applicationsOpen?'Onesa is preparing the service. You can ask the team about availability from Help & support.':String(next)}</p></div><button type="button" className="mw-button" onClick={()=>go(application||applicationsOpen?'application':'help')}>{application?'View application':applicationsOpen?'Start pilot application':'Ask about availability'}</button></div>{Boolean(application?.reviewNote)&&<Info tone="pending">Review note: {String(application?.reviewNote)}</Info>}</Panel>
-    <div className="mw-columns"><Panel title="Connection status"><p>No host-confirmed mobile line or usage measurements are available for this account.</p><dl className="mw-definition-list"><div><dt>Terrestrial mobile</dt><dd>Awaiting host integration</dd></div><div><dt>Direct-to-cell satellite</dt><dd>Eligibility unverified</dd></div><div><dt>Last network measurement</dt><dd>{data.network.lastMeasuredAt?<DateText value={data.network.lastMeasuredAt}/>:<>None received</>}</dd></div></dl><p className="mw-secondary">{pasofi.introduction} {pasofi.status} <a href={pasofi.url}>Visit Pasofi Wi-Fi</a>.</p></Panel>
-      <Panel title="Help when you need it"><p>Track a question or request help with your application, phone, coverage or a test payment.</p><button className="mw-button mw-button-secondary" type="button" onClick={()=>go('help')}>Open support</button>{data.tickets[0]&&<div className="mw-recent-item"><strong>{String(data.tickets[0].subject)}</strong><Pill value={data.tickets[0].status}/><span>Updated <DateText value={data.tickets[0].updatedAt}/></span></div>}</Panel></div>
+    {showLaunchInterest && <LaunchInterestPreference data={data} context={context}/>}
+    {(application || applicationsOpen || !showLaunchInterest) && <Panel title="Your next step"><div className="mw-record-line"><div><h3>{!application&&!applicationsOpen?'Applications are not open':String(state)}</h3><p>{!application&&!applicationsOpen?'Onesa is preparing the service. You can ask the team about availability from Help & support.':String(next)}</p></div><button type="button" className="mw-button" onClick={()=>go(application||applicationsOpen?'application':'help')}>{application?'View application':applicationsOpen?'Start pilot application':'Ask about availability'}</button></div>{Boolean(application?.reviewNote)&&<Info tone="pending">Review note: {String(application?.reviewNote)}</Info>}</Panel>}
+    <div className="mw-columns"><Panel title="Connection status"><p>No host-confirmed mobile line or usage measurements are available for this account.</p><dl className="mw-definition-list"><div><dt>Terrestrial mobile</dt><dd>Awaiting host integration</dd></div><div><dt>Direct-to-cell satellite</dt><dd>Awaiting provider agreement</dd></div><div><dt>Last network measurement</dt><dd>{data.network.lastMeasuredAt?<DateText value={data.network.lastMeasuredAt}/>:<>None received</>}</dd></div></dl><p className="mw-secondary">{pasofi.introduction} {pasofi.status} <a href={pasofi.url}>Visit Pasofi Wi-Fi</a>.</p></Panel>
+      <Panel title="Help when you need it"><p>{context.mode === 'lab' ? 'Track a question or request help with your application, phone, coverage or a test payment.' : 'Ask about your account or service availability and follow replies from the Onesa team.'}</p><button className="mw-button mw-button-secondary" type="button" onClick={()=>go('help')}>Open support</button>{data.tickets[0]&&<div className="mw-recent-item"><strong>{String(data.tickets[0].subject)}</strong><Pill value={data.tickets[0].status}/><span>Updated <DateText value={data.tickets[0].updatedAt}/></span></div>}</Panel></div>
     <Info>{context.mode==='lab'?'Lab records are saved to this pilot workspace. Use test details only.':'Onesa is preparing the service. Commercial sales and network activation are unavailable.'}</Info>
   </div>;
 }
@@ -62,8 +83,8 @@ export function CustomerHelp({ data,context }: {data:CustomerData;context:Worksp
 }
 export function CustomerAccount({ data,context }: {data:CustomerData;context:WorkspaceContext}) {
   return <div className="mw-stack"><Panel title="Account details"><dl className="mw-definition-list"><div><dt>Signed in as</dt><dd>{context.user.displayName}</dd></div><div><dt>Identity</dt><dd>{context.user.source==='onesa'?'Onesa account':'Isolated lab account'}</dd></div><div><dt>Account reference</dt><dd className="mw-reference">{context.user.subject}</dd></div></dl><MutationButton context={context} action={()=>context.download('/v1/me/export','onesa-mobile-account.json')}>Download my account records</MutationButton></Panel>
-    <Panel title="Service and privacy requests"><p>Send a request for the team to review. A saved request does not automatically erase records, transfer a number or replace a SIM.</p><Details label="Create an account request"><RecordForm title="Create account request" busy={context.pending} submitLabel="Save request" fields={[
-      {name:'type',label:'Request type',type:'select',options:[{value:'data_correction',label:'Correct account information'},{value:'account_closure',label:'Request account closure'},{value:'sim_replacement',label:'Ask about SIM replacement'},{value:'number_porting',label:'Ask about moving a number'}],wide:true},
+    <Panel title="Service and privacy requests"><p>The team reviews requests to correct your information or close your account. For a question about a mobile service, open a support case.</p><Details label="Create an account request"><RecordForm title="Create account request" busy={context.pending} submitLabel="Save request" fields={[
+      {name:'type',label:'Request type',type:'select',options:[{value:'data_correction',label:'Correct account information'},{value:'account_closure',label:'Request account closure'},...(context.mode==='lab'?[{value:'sim_replacement',label:'Ask about SIM replacement'},{value:'number_porting',label:'Ask about moving a number'}]:[])],wide:true},
       {name:'detail',label:'What should the team review?',type:'textarea'},
     ]} onSubmit={v=>context.mutate('/v1/account/requests',{type:v.type,detail:v.detail},'POST','Request saved for staff review.')}/></Details>
       {data.requests.length?<div className="mw-record-list">{data.requests.map(request=><article className="mw-record" key={request.id}><div className="mw-record-line"><h3>{humanize(request.type)}</h3><Pill value={request.status}/></div><p>{String(request.detail)}</p>{Boolean(request.responseNote)&&<Info>Staff response: {String(request.responseNote)}</Info>}<p className="mw-secondary">Updated <DateText value={request.updatedAt}/></p></article>)}</div>:<Empty>No account requests have been recorded.</Empty>}

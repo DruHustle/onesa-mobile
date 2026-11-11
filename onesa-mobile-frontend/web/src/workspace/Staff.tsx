@@ -73,6 +73,17 @@ export function Applications({data,context}:{data:StaffData;context:WorkspaceCon
   const visible=data.applications.filter(item=>matches(item,search,['displayName','area','state','deviceModel']));
   const writable=has(data,'subscribers.review')&&context.mode==='lab';
   return <div className="mw-stack"><Info>Review lab applications without collecting identity documents here. A pilot registration reference records a review step; it does not verify legal registration, provision a SIM or establish satellite eligibility.</Info>
+    {data.launchInterests && <Panel title="Customer launch preferences" hint={`${data.launchInterests.length} shown`}>
+      {data.launchInterests.length ? <div className="mw-record-list">{data.launchInterests.map(interest =>
+        <article className="mw-record" key={interest.id}>
+          <div className="mw-record-line">
+            <div><h3>Account reference</h3><p className="mw-reference">{interest.owner}</p></div>
+            <Pill value={interest.state}/>
+          </div>
+          <p className="mw-secondary">Updated <DateText value={interest.updatedAt}/></p>
+        </article>
+      )}</div> : <Empty>No launch preferences have been recorded.</Empty>}
+    </Panel>}
     <Panel title="Pilot applications" hint={`${visible.length} shown`}><Search label="Find loaded applications by participant, area or state" value={search} setValue={setSearch}/>
       {visible.length?<div className="mw-record-list">{visible.map(item=><article className="mw-record" key={item.id}><div className="mw-record-line"><div><h3>{String(item.displayName)}</h3><p>{String(item.area)} · {planName(item.planId)} concept</p></div><Pill value={item.state}>{applicationState(item.state)[0]}</Pill></div><div className="mw-inline-facts"><span>{String(item.deviceModel)}</span><span>SIM preference: {item.simFormat==='esim'?'eSIM':'Physical SIM'}</span><span>Network: <strong>Not provisioned</strong></span></div>
         {Boolean(item.reviewNote)&&<Info>Customer-visible note: {String(item.reviewNote)}</Info>}

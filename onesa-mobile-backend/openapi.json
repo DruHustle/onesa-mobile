@@ -2376,7 +2376,7 @@
             "$ref": "#/components/responses/Error503"
           }
         },
-        "description": "Contains all owned applications, support cases, ledger rows and account requests, not just the first page. No identity credential or another customer record is included. Export is audited and stops on disconnect or timeout. A stream failure after headers closes the response; discard partial JSON and retry the download."
+        "description": "Includes the current launch preference and all owned applications, support cases, ledger rows and account requests, not just the first page. No identity credential or another customer record is included. Export is audited and stops on disconnect or timeout. A stream failure after headers closes the response; discard partial JSON and retry the download."
       },
       "options": {
         "operationId": "options_v1_me_export",
@@ -3128,6 +3128,7 @@
                 "tickets",
                 "ledger",
                 "requests",
+                "launchInterests",
                 "billingAccounts",
                 "audit"
               ]
@@ -3347,6 +3348,7 @@
                 "tickets",
                 "ledger",
                 "requests",
+                "launchInterests",
                 "billingAccounts"
               ]
             }
@@ -3577,6 +3579,223 @@
               "type": "string"
             }
           },
+          {
+            "name": "Origin",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "If supplied, must exactly match an allowed origin."
+          },
+          {
+            "name": "Access-Control-Request-Method",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "GET",
+                "HEAD",
+                "POST",
+                "PATCH"
+              ]
+            },
+            "description": "The general preflight method allowlist does not promise every method is implemented at every path."
+          },
+          {
+            "name": "Access-Control-Request-Headers",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Case-insensitive subset of Accept, Authorization, Content-Type, Idempotency-Key, X-CSRF-Token."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Allowed preflight; no body.",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Server-generated correlation identifier; contains no account credential.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "description": "All responses are private to the request and are never cached.",
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "405": {
+            "description": "Requested method is not in the preflight allowlist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        }
+      }
+    },
+    "/v1/account/launch-interest": {
+      "post": {
+        "operationId": "setOwnLaunchInterest",
+        "summary": "Register or withdraw interest in the service launch",
+        "tags": [
+          "Customer"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          },
+          {
+            "labSessionCookie": []
+          },
+          {
+            "nativeBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Register or withdraw interest in the service launch",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Server-generated correlation identifier; contains no account credential.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "description": "All responses are private to the request and are never cached.",
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/LaunchInterestRecord"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "413": {
+            "$ref": "#/components/responses/Error413"
+          },
+          "414": {
+            "$ref": "#/components/responses/Error414"
+          },
+          "415": {
+            "$ref": "#/components/responses/Error415"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Required for cookie mutations and cookie lab sign-in; must exactly match a configured allowed origin. Native bearer requests may omit Origin; a supplied foreign Origin is rejected."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43}$",
+              "minLength": 43,
+              "maxLength": 43
+            },
+            "description": "Required with an existing cookie session. Read csrfToken from GET /v1/session. Not required for native bearer transport. Never put it in a URL."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,128}$",
+              "minLength": 16,
+              "maxLength": 128
+            },
+            "description": "Generate once for an intended business mutation, retain through uncertain retries, and replace when input changes. Scope is the authenticated subject. Same operation/input returns the committed original result; changed operation/input returns 409 IDEMPOTENCY_CONFLICT. No TTL is imposed by the pilot store."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "At most 16 KiB UTF-8 JSON. Unknown fields are rejected. Text is trimmed; forbidden control characters and obvious credential-bearing evidence references are rejected by domain validation.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LaunchInterestInput"
+              }
+            }
+          }
+        },
+        "description": "Customer account only. The preference is owned by the authenticated subject; submit revision zero when no preference exists. Opposing stale changes return 409. Repeating the current preference is a no-op. Withdrawing before registration returns null. This records interest only and never creates a paid order, a notification subscription, a SIM or satellite entitlement."
+      },
+      "options": {
+        "operationId": "options_v1_account_launch_interest",
+        "summary": "Validate CORS preflight for this path",
+        "tags": [
+          "Transport"
+        ],
+        "security": [],
+        "parameters": [
           {
             "name": "Origin",
             "in": "header",
@@ -7290,7 +7509,7 @@
             }
           }
         },
-        "description": "Authenticated account. No automatic closure, erasure, SIM replacement or number transfer is executed.\n\nCookie mutations require exact Origin and X-CSRF-Token; native bearer requests may omit both. Every business mutation requires Idempotency-Key. Existing records require their current positive revision; a stale revision returns 409 without applying the action. Identity and role are revalidated before business processing."
+        "description": "Authenticated account. Production accepts account closure and data correction for staff review. SIM replacement and number transfer requests are lab-only while provider service is unavailable. No automatic action is executed.\n\nCookie mutations require exact Origin and X-CSRF-Token; native bearer requests may omit both. Every business mutation requires Idempotency-Key. Existing records require their current positive revision; a stale revision returns 409 without applying the action. Identity and role are revalidated before business processing."
       },
       "options": {
         "operationId": "options_v1_account_requests",
@@ -8566,6 +8785,24 @@
       }
     },
     "schemas": {
+      "LaunchInterestInput": {
+        "type": "object",
+        "properties": {
+          "interested": {
+            "type": "boolean"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "interested",
+          "revision"
+        ],
+        "additionalProperties": false
+      },
       "SiteInput": {
         "type": "object",
         "properties": {
@@ -9766,6 +10003,10 @@
           "capabilities": {
             "type": "object",
             "properties": {
+              "launchInterest": {
+                "type": "boolean",
+                "const": true
+              },
               "hardwareInventory": {
                 "type": "boolean",
                 "const": true
@@ -9802,6 +10043,7 @@
               }
             },
             "required": [
+              "launchInterest",
               "hardwareInventory",
               "commissioning",
               "fieldTrialRecords",
@@ -11684,6 +11926,52 @@
         ],
         "additionalProperties": true
       },
+      "LaunchInterestRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "const": "launchInterests"
+          },
+          "owner": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "registered",
+              "withdrawn"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "owner",
+          "revision",
+          "createdAt",
+          "updatedAt",
+          "state"
+        ],
+        "additionalProperties": false
+      },
       "RequestRecord": {
         "type": "object",
         "properties": {
@@ -11863,6 +12151,9 @@
           },
           {
             "$ref": "#/components/schemas/RequestRecord"
+          },
+          {
+            "$ref": "#/components/schemas/LaunchInterestRecord"
           }
         ],
         "discriminator": {
@@ -11875,7 +12166,8 @@
             "applications": "#/components/schemas/ApplicationRecord",
             "tickets": "#/components/schemas/TicketRecord",
             "ledger": "#/components/schemas/LedgerRecord",
-            "requests": "#/components/schemas/RequestRecord"
+            "requests": "#/components/schemas/RequestRecord",
+            "launchInterests": "#/components/schemas/LaunchInterestRecord"
           }
         }
       },
@@ -11909,6 +12201,9 @@
                 },
                 {
                   "$ref": "#/components/schemas/RequestRecord"
+                },
+                {
+                  "$ref": "#/components/schemas/LaunchInterestRecord"
                 },
                 {
                   "$ref": "#/components/schemas/BillingAccount"
@@ -11949,6 +12244,16 @@
         "properties": {
           "profile": {
             "$ref": "#/components/schemas/Profile"
+          },
+          "launchInterest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LaunchInterestRecord"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "applications": {
             "type": "array",
@@ -12094,6 +12399,7 @@
         },
         "required": [
           "profile",
+          "launchInterest",
           "applications",
           "tickets",
           "ledger",
@@ -12115,6 +12421,16 @@
           },
           "profile": {
             "$ref": "#/components/schemas/Profile"
+          },
+          "launchInterest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LaunchInterestRecord"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "applications": {
             "type": "array",
@@ -12144,6 +12460,7 @@
         "required": [
           "exportedAt",
           "profile",
+          "launchInterest",
           "applications",
           "tickets",
           "ledger",
@@ -12243,6 +12560,13 @@
             },
             "maxItems": 50
           },
+          "launchInterests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LaunchInterestRecord"
+            },
+            "maxItems": 50
+          },
           "billingAccounts": {
             "type": "array",
             "items": {
@@ -12306,6 +12630,10 @@
                 "type": "integer",
                 "minimum": 0
               },
+              "launchInterests": {
+                "type": "integer",
+                "minimum": 0
+              },
               "billingAccounts": {
                 "type": "integer",
                 "minimum": 0
@@ -12324,6 +12652,7 @@
               "tickets",
               "ledger",
               "requests",
+              "launchInterests",
               "billingAccounts",
               "audit"
             ],
@@ -12412,6 +12741,16 @@
                   }
                 ]
               },
+              "launchInterests": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
               "billingAccounts": {
                 "anyOf": [
                   {
@@ -12442,6 +12781,7 @@
               "tickets",
               "ledger",
               "requests",
+              "launchInterests",
               "billingAccounts",
               "audit"
             ],
@@ -12460,6 +12800,7 @@
           "tickets",
           "ledger",
           "requests",
+          "launchInterests",
           "billingAccounts",
           "audit",
           "auditIntegrity",

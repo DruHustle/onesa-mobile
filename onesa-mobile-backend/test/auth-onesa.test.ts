@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { z } from "zod";
 import { createHash, generateKeyPairSync, randomBytes, randomUUID, sign } from "node:crypto";
 import { AuthService, AuthError, type AuthConfig } from "../src/auth/service.ts";
 import { OnesaIdentity, validateOnesaAssertion, validateOnesaConfig } from "../src/auth/onesa.ts";
 import type { OnesaConfig, Role, Surface } from "../src/auth/types.ts";
+
+import { createPlatformServer } from "../src/platform/http.ts";
 
 const keys = generateKeyPairSync("rsa", { modulusLength: 2048 });
 const issuer = "https://account.example.invalid/api/v1/identity";
@@ -223,5 +226,78 @@ test("local sign-out remains available during issuer outage without bypassing co
     assert.ok(fixture.auth.store.sessionByHash(createHash("sha256").update(issued.token).digest("hex")));
     assert.deepEqual(await fixture.auth.logoutPresented(headers, { origin: publicOrigin, csrfToken: issued.session.csrfToken }), { centralRevocation: "unavailable" });
     assert.equal(await fixture.auth.authenticate({ authorization: "Bearer " + issued.token }), null);
+  });
+});
+
+
+test("verified Portal customer can manage launch interest through production HTTP while provisioning remains held", async () => {
+  const localFetch = globalThis.fetch;
+  await mockProvider("customer", async fixture => {
+    const { server } = createPlatformServer({
+      mode: "production", databasePath: ":memory:", publicOrigin, allowedOrigins: [publicOrigin],
+      host: "127.0.0.1", port: 0, trustedProxyIps: [], onesa: client,
+      encryptionKey: randomBytes(32).toString("hex"),
+    });
+    await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+    try {
+      const address = server.address();
+      assert.ok(address && typeof address === "object");
+      const base = "http://127.0.0.1:" + address.port;
+      const start = await localFetch(base + "/v1/auth/onesa/start?surface=customer", { redirect: "manual" });
+      assert.equal(start.status, 302);
+      const authorization = new URL(start.headers.get("location")!);
+      assert.equal(authorization.origin + authorization.pathname, issuer + "/auth");
+      fixture.query = authorization.searchParams;
+      const callbackQuery = new URLSearchParams({ code: "synthetic-code", state: fixture.query.get("state")! });
+      const callback = await localFetch(base + "/v1/auth/onesa/callback?" + callbackQuery, {
+        redirect: "manual", headers: { Cookie: start.headers.getSetCookie()[0]!.split(";")[0]! },
+      });
+      assert.equal(callback.status, 302);
+      assert.equal(callback.headers.get("location"), "/account/");
+      const sessionCookie = callback.headers.getSetCookie().find(cookie => cookie.startsWith("__Host-onesa_mobile_session="));
+      assert.ok(sessionCookie);
+      assert.match(sessionCookie, /; Secure/);
+      const cookie = sessionCookie.split(";")[0]!;
+      const session = await localFetch(base + "/v1/session", { headers: { Cookie: cookie } });
+      assert.equal(session.status, 200);
+      const discovery = z.object({ mode: z.string(), user: z.object({ source: z.string() }), csrfToken: z.string().min(1) }).parse(await session.json());
+      assert.equal(discovery.mode, "production");
+      assert.equal(discovery.user.source, "onesa");
+      const account = async () => {
+        const response = await localFetch(base + "/v1/me", { headers: { Cookie: cookie } });
+        assert.equal(response.status, 200);
+        return z.object({
+          launchInterest: z.object({ state: z.string(), revision: z.number().int().positive() }).nullable(),
+          status: z.object({ capabilities: z.object({ launchInterest: z.boolean() }) }),
+          network: z.object({ state: z.string() }), applications: z.array(z.unknown()), ledger: z.array(z.unknown()),
+        }).parse(await response.json());
+      };
+      const before = await account();
+      assert.equal(before.launchInterest, null);
+      assert.equal(before.status.capabilities.launchInterest, true);
+      const send = (path: string, body: unknown) => localFetch(base + path, {
+        method: "POST", headers: { Cookie: cookie, Origin: publicOrigin, "X-CSRF-Token": discovery.csrfToken,
+          "Content-Type": "application/json", "Idempotency-Key": randomUUID() }, body: JSON.stringify(body),
+      });
+      const registered = await send("/v1/account/launch-interest", { interested: true, revision: 0 });
+      assert.equal(registered.status, 200);
+      const saved = (await account()).launchInterest;
+      assert.ok(saved);
+      assert.equal(saved.state, "registered");
+      const application = await send("/v1/applications", {});
+      assert.equal(application.status, 503);
+      assert.deepEqual(z.object({ error: z.object({ code: z.string() }) }).parse(await application.json()).error, { code: "COMMERCIAL_SERVICE_UNAVAILABLE" });
+      const withdrawn = await send("/v1/account/launch-interest", { interested: false, revision: saved.revision });
+      assert.equal(withdrawn.status, 200);
+      const after = await account();
+      assert.equal(after.launchInterest?.state, "withdrawn");
+      assert.equal(after.network.state, "not_provisioned");
+      assert.deepEqual(after.applications, []);
+      assert.deepEqual(after.ledger, []);
+      fixture.active = { active: false };
+      assert.equal((await localFetch(base + "/v1/me", { headers: { Cookie: cookie } })).status, 401);
+    } finally {
+      await new Promise<void>(resolve => server.close(() => resolve()));
+    }
   });
 });

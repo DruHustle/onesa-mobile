@@ -35,6 +35,7 @@ The canonical [OpenAPI contract](openapi.json) describes input schemas, response
 | Health / public | `/healthz`, `/v1/status`, `/v1/catalog`; health is distinct from mobile-service availability |
 | Identity | `/v1/session`, lab login/logout; Onesa start/callback and native one-time code exchange |
 | Customer | `/v1/me`, `/v1/me/export`, `/v1/me/records/:kind`; own applications, support conversations, requests and test receipts |
+| Launch interest | `POST /v1/account/launch-interest` records a signed-in customer's preference in lab and production. Send `interested` and the current `revision` (zero for a new record). Customers can withdraw or rejoin. Read the current preference from `launchInterest` in the account or its export. Staff with `subscribers.read` can review the `launchInterests` collection. |
 | Hardware | `/v1/ops/sites`, assets/checks, trials/results; persistent inventory and manually evidenced commissioning |
 | Readiness | `/v1/ops/evidence` and review; scope, expiry, separate reviewer and no automatic activation |
 | Company | `/v1/ops/snapshot`, `/v1/ops/records/:kind`, application reviews, requests, test ledger/refunds and audit |
@@ -57,6 +58,8 @@ Roles are customer, support, operations, finance, agent, auditor and admin. Cust
 SQLite uses WAL, foreign keys, a busy timeout and atomic domain/audit/idempotency writes. The implementation is intentionally one replica on local durable disk, not a distributed billing database. Do not place WAL storage on an unqualified network filesystem or share it across replicas. Node 24.22.1 labels `node:sqlite` Stability 1.2 (release candidate); qualify runtime upgrades and use the committed recovery tests. [Runtime reference](https://nodejs.org/download/release/v24.22.1/docs/api/sqlite.html).
 
 Authentication secrets/upstream tokens are encrypted; domain records require protected volumes and approved retention/location for real data. Private files are ignored by Git. Use the [runtime/recovery guide](../infra/runtime/README.md), which documents authenticated encryption, WAL-consistent capture, separate keys, fail-closed restore and session invalidation. The audit chain is not independent nonrepudiation against an administrator able to rewrite the entire database.
+
+The database records its deployment mode when opened. Start older databases with their original mode and keys on the first upgrade. The API, lab credential tools and backup validation then reject a volume marked for a different mode. The public customer domain `mobile.onesa.eu` requires production authentication.
 
 The isolated Compose lab binds its web port to loopback and blocks API provider egress. Production configuration is a candidate requiring approved ingress, actual identity configuration, key custody and environment qualification. Use its reviewed deployment process; there is no automatic production migration.
 

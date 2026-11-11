@@ -87,7 +87,7 @@ test('domain mutations document cookie CSRF, idempotency, revisions and exact ge
     if (path.includes('{id}')) assert.ok((object(definitions[name]).required as string[]).includes('revision'));
     assert.ok(object(operation.responses)['409']);
   }
-  assert.equal(mutations, 18);
+  assert.equal(mutations, 19);
 });
 
 test('read pages stay bounded while account export is complete, receipts are binary and fixtures remain marked fictional', () => {

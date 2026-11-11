@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Store } from "../src/platform/store.ts";
 import { AuthService } from "../src/auth/service.ts";
+import { AuthStore } from "../src/auth/store.ts";
 
 function fixture() {
   const directory = mkdtempSync(join(tmpdir(), "onesa-storage-security-"));
@@ -15,6 +16,35 @@ function fixture() {
     cleanup: () => rmSync(directory, { recursive: true, force: true }) };
 }
 const permissions = (path: string) => statSync(path).mode & 0o777;
+
+test("a production volume cannot be opened in lab mode, including after upgrading a pre-marker central account", () => {
+  const f = fixture();
+  const base = { databasePath: f.path, publicOrigin: "https://mobile.example.test", allowedOrigins: ["https://mobile.example.test"] };
+  const production = { ...base, mode: "production" as const, encryptionKey: "ab".repeat(32) };
+  const lab = { ...base, mode: "lab" as const };
+  try {
+    const existing = new AuthStore(production);
+    existing.db.exec("DROP TABLE mobile_auth_environment");
+    existing.record("synthetic-central-subject", "session.created", "success");
+    existing.close();
+    assert.throws(() => new AuthStore(lab), /central account activity/);
+    assert.equal(existsSync(f.path + ".authkey"), false);
+    const upgraded = new AuthStore(production);
+    assert.equal(upgraded.db.prepare("SELECT mode FROM mobile_auth_environment").get()?.mode, "production");
+    upgraded.close();
+    assert.throws(() => new AuthStore({ ...lab, encryptionKey: production.encryptionKey }), /different deployment mode/);
+    assert.throws(() => new AuthStore(lab), /different deployment mode/);
+    assert.equal(existsSync(f.path + ".authkey"), false);
+    new AuthStore(production).close();
+  } finally { f.cleanup(); }
+});
+
+test("lab auth refuses the public customer origin and still accepts an isolated HTTPS lab", () => {
+  const config = { mode: "lab" as const, databasePath: ":memory:", publicOrigin: "https://lab.example.test", allowedOrigins: ["https://lab.example.test"] };
+  assert.throws(() => new AuthService({ ...config, allowedOrigins: [...config.allowedOrigins, "https://mobile.onesa.eu"] }), /public Onesa Mobile/);
+  assert.throws(() => new AuthService({ ...config, publicOrigin: "https://mobile.onesa.eu", allowedOrigins: ["https://mobile.onesa.eu"] }), /public Onesa Mobile/);
+  new AuthService(config).close();
+});
 
 test("new database, WAL and SHM are private before authentication on a traversable existing directory", () => {
   const f = fixture(), previousMask = process.umask(0o022);

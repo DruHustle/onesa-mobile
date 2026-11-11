@@ -3,9 +3,9 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import unavailable from "../api/unavailable.mjs";
 
-const configuration = JSON.parse(
-  await readFile(new URL("../vercel.json", import.meta.url), "utf8"),
-);
+import { accountRoutes, config as deployedConfiguration } from "../vercel.mjs";
+
+const configuration = { ...deployedConfiguration, rewrites: deployedConfiguration.rewrites.filter(rule => !rule.has) };
 // The selected sources are literal paths and regular-expression groups only;
 // they deliberately contain no named parameters, substitutions or host rules.
 const matches = (source, path) => new RegExp(`^(?:${source})$`).test(path);
@@ -80,6 +80,24 @@ test("API paths resolve to the holding function and never to an HTML shell", () 
   for (const path of ["/", "/index.html", "/assets/app.js", "/apiary", "/accounting", "/missing-page"])
     assert.equal(rewrite(path), undefined, path);
   assert.ok(configuration.rewrites.every((rule) => rule.destination.startsWith("/") && !rule.destination.startsWith("//")));
+});
+
+test("only a configured production domain forwards account requests to its Mobile gateway", () => {
+  const gateway = "https://mobile-gateway.onesa.eu";
+  assert.deepEqual(accountRoutes({ VERCEL_ENV: "production" }), []);
+  for (const environment of ["preview", "development", undefined]) {
+    assert.deepEqual(accountRoutes({ VERCEL_ENV: environment, MOBILE_ACCOUNT_GATEWAY_ORIGIN: gateway }), []);
+  }
+  const rules = accountRoutes({ VERCEL_ENV: "production", MOBILE_ACCOUNT_GATEWAY_ORIGIN: gateway + "/" });
+  assert.deepEqual(rules, [
+    { source: "/api", has: [{ type: "host", value: { eq: "mobile.onesa.eu" } }], destination: gateway + "/api/" },
+    { source: "/api/:path(.*)", has: [{ type: "host", value: { eq: "mobile.onesa.eu" } }], destination: gateway + "/api/:path" },
+  ]);
+  for (const invalid of ["https://mobile.onesa.eu", "http://mobile-gateway.onesa.eu", "https://wrong.example",
+    "https://onesa.eu.wrong.example", gateway + ":8443", gateway + "/api", gateway + "/?next=1",
+    gateway + "/#test", "https://user@mobile-gateway.onesa.eu"]) {
+    assert.throws(() => accountRoutes({ VERCEL_ENV: "production", MOBILE_ACCOUNT_GATEWAY_ORIGIN: invalid }));
+  }
 });
 
 test("private shells and API responses cannot be cached or indexed; hashed assets stay cacheable", () => {

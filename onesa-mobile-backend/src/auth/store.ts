@@ -22,6 +22,27 @@ export interface HandoffRow {
   code_hash: string; challenge: string; state: string; token: string; expires_at: number;
 }
 
+function authenticationKey(config: AuthConfig, path: string): Buffer {
+  if (config.encryptionKey !== undefined) {
+    if (!/^[a-f0-9]{64}$/i.test(config.encryptionKey)) throw new Error("AUTH_ENCRYPTION_KEY must be 64 hexadecimal characters.");
+    return Buffer.from(config.encryptionKey, "hex");
+  } else if (config.mode === "production") {
+    throw new Error("Production authentication requires AUTH_ENCRYPTION_KEY.");
+  } else if (path === ":memory:") {
+    return randomBytes(32);
+  } else {
+    const keyPath = path + ".authkey";
+    if (!existsSync(keyPath)) {
+      writeFileSync(keyPath, randomBytes(32).toString("hex") + "\n", { flag: "wx", mode: 0o600 });
+    }
+    if (lstatSync(keyPath).isSymbolicLink()) throw new Error("Lab authentication key cannot be a symlink.");
+    chmodSync(keyPath, 0o600);
+    const key = readFileSync(keyPath, "utf8").trim();
+    if (!/^[a-f0-9]{64}$/.test(key)) throw new Error("Lab authentication key is invalid.");
+    return Buffer.from(key, "hex");
+  }
+}
+
 export class AuthStore {
   readonly db: DatabaseSync;
   readonly key: Buffer;
@@ -29,24 +50,6 @@ export class AuthStore {
     const inMemory = config.databasePath === ":memory:";
     const path = inMemory ? ":memory:" : resolve(config.databasePath);
     if (!inMemory) prepareDatabaseFiles(path);
-    if (config.encryptionKey !== undefined) {
-      if (!/^[a-f0-9]{64}$/i.test(config.encryptionKey)) throw new Error("AUTH_ENCRYPTION_KEY must be 64 hexadecimal characters.");
-      this.key = Buffer.from(config.encryptionKey, "hex");
-    } else if (config.mode === "production") {
-      throw new Error("Production authentication requires AUTH_ENCRYPTION_KEY.");
-    } else if (inMemory) {
-      this.key = randomBytes(32);
-    } else {
-      const keyPath = path + ".authkey";
-      if (!existsSync(keyPath)) {
-        writeFileSync(keyPath, randomBytes(32).toString("hex") + "\n", { flag: "wx", mode: 0o600 });
-      }
-      if (lstatSync(keyPath).isSymbolicLink()) throw new Error("Lab authentication key cannot be a symlink.");
-      chmodSync(keyPath, 0o600);
-      const key = readFileSync(keyPath, "utf8").trim();
-      if (!/^[a-f0-9]{64}$/.test(key)) throw new Error("Lab authentication key is invalid.");
-      this.key = Buffer.from(key, "hex");
-    }
     this.db = new DatabaseSync(path);
     this.db.exec("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000; PRAGMA journal_mode=WAL;");
     this.db.exec([
@@ -58,9 +61,32 @@ export class AuthStore {
       "CREATE TABLE IF NOT EXISTS mobile_auth_limits (key_hash TEXT PRIMARY KEY, hits INTEGER NOT NULL, until_at INTEGER NOT NULL) STRICT",
       "CREATE TABLE IF NOT EXISTS mobile_auth_events (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, subject TEXT, action TEXT NOT NULL, outcome TEXT NOT NULL) STRICT",
     ].join(";") + ";");
-    if (config.mode === "production") {
-      const count = this.db.prepare("SELECT (SELECT count(*) FROM mobile_auth_users) + (SELECT count(*) FROM mobile_auth_sessions WHERE source='lab') AS n").get() as { n: number };
-      if (count.n !== 0) { this.db.close(); throw new Error("Production authentication refuses lab identities or sessions. Use a separate production database."); }
+    try {
+      this.key = this.transaction(() => {
+        this.db.exec("CREATE TABLE IF NOT EXISTS mobile_auth_environment (id INTEGER PRIMARY KEY CHECK(id=1), mode TEXT NOT NULL CHECK(mode IN ('lab','production'))) STRICT");
+        const existing = this.db.prepare("SELECT mode FROM mobile_auth_environment WHERE id=1").get();
+        if (config.mode === "production") {
+          const count = this.db.prepare("SELECT (SELECT count(*) FROM mobile_auth_users) + (SELECT count(*) FROM mobile_auth_sessions WHERE source='lab') AS n").get();
+          if (count?.n !== 0) throw new Error("Production authentication refuses lab identities or sessions. Use a separate production database.");
+        }
+        if (existing && existing.mode !== config.mode)
+          throw new Error("The database belongs to a different deployment mode. Use the correct Mobile volume.");
+        // Before mode markers, central sessions were encrypted with an external key in production.
+        // Never mint a new local lab key over an existing central account history.
+        if (!existing && config.mode === "lab" && !config.encryptionKey && !inMemory && !existsSync(path + ".authkey")) {
+          const centralHistory = this.db.prepare(
+            "SELECT 1 FROM mobile_auth_events e WHERE e.action='session.created' AND NOT EXISTS (SELECT 1 FROM mobile_auth_users u WHERE u.id=e.subject) LIMIT 1"
+          ).get();
+          if (centralHistory)
+            throw new Error("This database contains central account activity. Use its original environment and authentication key.");
+        }
+        const key = authenticationKey(config, path);
+        if (!existing) this.db.prepare("INSERT INTO mobile_auth_environment(id,mode) VALUES(1,?)").run(config.mode);
+        return key;
+      });
+    } catch (error) {
+      this.db.close();
+      throw error;
     }
   }
   close(): void { this.db.close(); }

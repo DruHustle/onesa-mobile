@@ -259,6 +259,33 @@ test("HTTP enforces mutation retry keys, ownership, current revision and role bo
   );
   assert.equal((await call("/v1/ops/records/assets", finance)).status, 403);
 });
+test("launch interest is owner-scoped, exportable, and visible to subscriber staff", async () => {
+  const path = "/v1/account/launch-interest";
+  const options = { method: "POST", body: { interested: true, revision: 0 }, key: randomUUID() };
+  assert.equal((await call(path, undefined, options)).status, 401);
+  assert.equal((await call(path, admin, options)).status, 403);
+  assert.equal((await call(path, customer, { ...options, body: { ...options.body, owner: other.subject } })).status, 400);
+  const saved = await call(path, customer, options);
+  assert.equal(saved.status, 200);
+  const record = await saved.json();
+  assert.equal(record.owner, customer.subject);
+  assert.equal(record.state, "registered");
+  assert.deepEqual((await (await call("/v1/me", customer)).json()).launchInterest, record);
+  assert.deepEqual((await (await call("/v1/me/export", customer)).json()).launchInterest, record);
+  assert.equal((await (await call("/v1/me", other)).json()).launchInterest, null);
+  assert.equal((await (await call("/v1/me/export", other)).json()).launchInterest, null);
+  const staffList = "/v1/ops/records/launchInterests";
+  assert.equal((await call(staffList, other)).status, 403);
+  assert.equal((await call(staffList + "/" + record.id, finance)).status, 403);
+  assert.deepEqual((await (await call(staffList, admin)).json()).items, [record]);
+  const withdrawn = await call(path, customer, {
+    method: "POST", body: { interested: false, revision: record.revision }, key: randomUUID(),
+  });
+  assert.equal(withdrawn.status, 200);
+  assert.equal((await withdrawn.json()).state, "withdrawn");
+  assert.equal((await (await call("/v1/ops/snapshot", admin)).json()).launchInterests[0].state, "withdrawn");
+  assert.deepEqual((await (await call("/v1/ops/snapshot", finance)).json()).launchInterests, []);
+});
 test("cursor pages reach every older record while protecting owner scope and export completeness", async () => {
   for (let i = 0; i < 205; i++)
     instance.store.insert("tickets", other.subject, {

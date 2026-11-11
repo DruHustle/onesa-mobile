@@ -129,11 +129,14 @@ test('the backup refuses invalid audit history and unknown schema versions', asy
 
 test('production recovery excludes the external authentication key and clears provider sessions', async t => {
   const f = await fixture(t, 'production');
+  // Legacy archives have a verified envelope mode but no database mode marker.
+  f.store.db.exec('DROP TABLE mobile_auth_environment');
   await createBackup({ databasePath: f.database, outputPath: f.archive, keyPath: f.keyPath, mode: 'production' });
   const encrypted = await readFile(f.archive);
   assert.equal(encrypted.includes(Buffer.from(f.config.encryptionKey)), false);
   await restoreBackup({ inputPath: f.archive, databasePath: f.target, keyPath: f.keyPath, mode: 'production' });
   await assert.rejects(lstat(f.target + '.authkey'), { code: 'ENOENT' });
+  assert.throws(() => new AuthStore({ ...f.config, mode: 'lab', databasePath: f.target }), /different deployment mode/);
   const auth = new AuthStore({ ...f.config, databasePath: f.target });
   try { assert.equal(auth.db.prepare('SELECT count(*) AS n FROM mobile_auth_sessions').get().n, 0); }
   finally { auth.close(); }

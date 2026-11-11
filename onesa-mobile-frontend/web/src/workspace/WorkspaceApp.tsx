@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { api, apiResponse, ApiError, errorMessage } from './api';
+import { accountModeMatchesHost } from '../readiness.mjs';
 import { Brand, DateText, Info, Panel } from './components';
 import { CustomerAccount, CustomerApplication, CustomerHelp, CustomerHome, CustomerPayments } from './Customer';
 import { Hardware, Trials } from './Hardware';
@@ -11,9 +12,9 @@ import './workspace.css';
 
 type WorkspaceData = CustomerData | StaffData;
 interface RecordPage { items: {id:string;revision?:number}[]; total:number; nextCursor:string|null }
-const collectionNames:Record<Collection,string>={sites:'Sites',assets:'Equipment',trials:'Trials',gates:'Evidence',applications:'Applications',tickets:'Support cases',ledger:'Test ledger entries',requests:'Account requests',billingAccounts:'Billing application choices',audit:'Audit actions'};
+const collectionNames:Record<Collection,string>={sites:'Sites',assets:'Equipment',trials:'Trials',gates:'Evidence',launchInterests:'Launch preferences',applications:'Applications',tickets:'Support cases',ledger:'Test ledger entries',requests:'Account requests',billingAccounts:'Billing application choices',audit:'Audit actions'};
 const collectionKeys=Object.keys(collectionNames) as Collection[];
-const sectionCollections:Record<string,Collection[]>={home:[],hardware:['sites','assets'],trials:['sites','assets','trials','gates'],readiness:['gates'],applications:['applications'],support:['tickets','requests'],billing:['ledger','billingAccounts'],audit:['audit'],application:['applications'],payments:['ledger'],help:['tickets'],account:['requests']};
+const sectionCollections:Record<string,Collection[]>={home:[],hardware:['sites','assets'],trials:['sites','assets','trials','gates'],readiness:['gates'],applications:['applications','launchInterests'],support:['tickets','requests'],billing:['ledger','billingAccounts'],audit:['audit'],application:['applications'],payments:['ledger'],help:['tickets'],account:['requests']};
 function collectionRows(data:WorkspaceData,kind:Collection):{id:string;revision?:number}[] {
   const value=(data as unknown as Record<string,unknown>)[kind];return Array.isArray(value)?value:[];
 }
@@ -39,7 +40,7 @@ const staffSections: Section[] = [
   {key:'hardware',label:'Sites & equipment',description:'Plan, receive and commission physical hardware.',permission:'hardware.read'},
   {key:'trials',label:'Field trials',description:'Test plans and sourced observations.',permission:'hardware.read'},
   {key:'readiness',label:'Readiness evidence',description:'Scoped evidence and independent review.',permission:'readiness.read'},
-  {key:'applications',label:'Pilot applications',description:'Customer review and host handoff records.',permission:'subscribers.read'},
+  {key:'applications',label:'Applications & interest',description:'Pilot application reviews and customer launch preferences.',permission:'subscribers.read'},
   {key:'support',label:'Support & requests',description:'Case assignment, customer replies and account requests.',permission:'support.read'},
   {key:'billing',label:'Test ledger',description:'Lab payment records, test refunds and receipts.',permission:'billing'},
   {key:'audit',label:'Audit trail',description:'Recorded actions and audit-chain consistency.',permission:'audit.read'},
@@ -95,6 +96,12 @@ export default function WorkspaceApp({surface}:{surface:Surface}) {
       const next=await api<Session>('/v1/session',{signal:active.signal});
       if(active.signal.aborted||sequence!==requestSequence.current)return false;
       if(!validSession(next))throw new ApiError(0,'RESPONSE_UNREADABLE','The sign-in service returned an unreadable response. Please retry.');
+      if(!accountModeMatchesHost(window.location.hostname,next)){
+        expireSession();
+        sessionRef.current=null;setSession(null);setNotice(null);
+        setPageError('Customer accounts are temporarily unavailable. Please try again later.');
+        return false;
+      }
       acceptSession(next);
       if(!next.authenticated||!sameSurface(next,surface)){setStale(false);return true;}
       let snapshot=await api<WorkspaceData>(surface==='staff'?'/v1/ops/snapshot':'/v1/me',{signal:active.signal});
@@ -143,7 +150,14 @@ export default function WorkspaceApp({surface}:{surface:Surface}) {
   },[]);
 
   const staffData=surface==='staff'?data as StaffData|null:null;
-  const sections=surface==='staff'?staffSections.filter(item=>!item.permission||(item.permission==='billing'?staffData?.permissions.some(p=>p==='billing.read'||p==='billing.write'):staffData?.permissions.includes(item.permission))):customerSections;
+  const customerData=surface==='customer'?data as CustomerData|null:null;
+  const visibleCustomerSections=customerSections.filter(item=>{
+    if(session?.mode !== 'production') return true;
+    if(item.key === 'application') return Boolean(customerData?.applications.length);
+    if(item.key === 'payments') return Boolean(customerData?.ledger.length);
+    return true;
+  });
+  const sections=surface==='staff'?staffSections.filter(item=>!item.permission||(item.permission==='billing'?staffData?.permissions.some(p=>p==='billing.read'||p==='billing.write'):staffData?.permissions.includes(item.permission))):visibleCustomerSections;
   const selected=sections.find(item=>item.key===section)??sections[0];
   useEffect(()=>{
     document.title=`${selected.label} · Onesa Mobile ${surface==='staff'?'Operations':'Account'}`;
@@ -283,9 +297,11 @@ function SignIn({session,surface,busy,login}:{session:Session;surface:Surface;bu
     try{await login(String(values.get('username')??''),String(values.get('password')??''),String(values.get('totp')??''));}
     catch(error){setError(errorMessage(error));}finally{setSending(false);}
   }
-  return <div className="mw-sign-in"><section className="mw-sign-in-intro"><p className="mw-eyebrow">{surface==='staff'?'Onesa Mobile Operations':'My Onesa Mobile'}</p><h1>{surface==='staff'?'The work behind your network.':'Your next step, clearly.'}</h1><p>{surface==='staff'?'Manage the physical bench, review evidence and support pilot participants.':'Follow your pilot application, get help and keep your account records together.'}</p><div className="mw-sign-in-boundary"><strong>Prelaunch workspace</strong><span>No mobile line or satellite entitlement is activated by signing in.</span></div></section>
+  return <div className="mw-sign-in"><section className="mw-sign-in-intro"><p className="mw-eyebrow">{surface==='staff'?'Onesa Mobile Operations':'My Onesa Mobile'}</p><h1>{surface==='staff'?'The work behind your network.':'Your next step, clearly.'}</h1><p>{surface==='staff'?'Manage the physical bench, review evidence and support pilot participants.':'Manage your launch preference, ask for help and find your account records.'}</p><div className="mw-sign-in-boundary"><strong>Prelaunch workspace</strong><span>No mobile line or satellite entitlement is activated by signing in.</span></div></section>
     <Panel title={surface==='staff'?'Staff sign-in':'Customer sign-in'} hint={session.authMode==='lab'?'Isolated lab accounts':'Your central Onesa account'}>
-      {session.ssoAvailable&&<div className="mw-sso"><a className="mw-button" href={`/api/v1/auth/onesa/start?surface=${surface}`}>Continue with Onesa</a><p className="mw-secondary">Use your central Onesa account. Account creation and password recovery are handled by Onesa sign-in.</p></div>}
+      {session.ssoAvailable&&<div className="mw-sso"><a className="mw-button" href={`/api/v1/auth/onesa/start?surface=${surface}`}>Continue with Onesa</a><p className="mw-secondary">{surface === 'customer' && session.mode === 'production'
+        ? 'New to Onesa? Choose Create account on the next screen, verify your email, then request Onesa Mobile access. Once approved, return here to sign in.'
+        : 'Use your central Onesa account. Password recovery is available on the next screen.'}</p></div>}
       {session.authMode==='lab'?<><Info>Use the pilot credentials supplied to you. These are lab accounts; do not enter a password from another service.{surface==='staff'?' Staff access also needs an authenticator code.':''}</Info><form className="mw-form mw-login-form" aria-label={`${surface==='staff'?'Staff':'Customer'} sign-in`} onSubmit={event=>void submit(event)}><fieldset disabled={busy||sending}><legend className="mw-visually-hidden">Pilot sign-in</legend>
         <label htmlFor="mw-username"><span>Lab username</span><input id="mw-username" name="username" autoComplete="username" required maxLength={254} autoCapitalize="none" spellCheck={false}/></label>
         <label htmlFor="mw-password"><span>Lab password</span><input id="mw-password" name="password" type="password" autoComplete="current-password" required maxLength={256}/></label>

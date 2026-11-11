@@ -21,6 +21,7 @@ export type Kind =
   | "trials"
   | "gates"
   | "applications"
+  | "launchInterests"
   | "tickets"
   | "ledger"
   | "requests";
@@ -112,6 +113,10 @@ export const gateKeys = Object.keys(gateLabels) as [
   ...(keyof typeof gateLabels)[],
 ];
 export const schemas = {
+  launchInterest: z.object({
+    interested: z.boolean(),
+    revision: z.number().int().nonnegative(),
+  }).strict(),
   site: z
     .object({
       name: text(80),

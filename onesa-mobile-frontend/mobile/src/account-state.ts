@@ -6,10 +6,15 @@ export interface SessionDiscovery {
   ssoAvailable: boolean;
 }
 
-export function isSessionDiscovery(value: unknown): value is SessionDiscovery {
+export function isPublicAccountApi(base: string | null): boolean {
+  return base !== null && new URL(base).origin === 'https://mobile.onesa.eu';
+}
+
+export function isSessionDiscovery(value: unknown, productionRequired = false): value is SessionDiscovery {
   const data = value as SessionDiscovery | null;
   return !!data && ['lab', 'production'].includes(data.mode) &&
-    ['lab', 'onesa'].includes(data.authMode) && typeof data.ssoAvailable === 'boolean';
+    data.authMode === (data.mode === 'lab' ? 'lab' : 'onesa') &&
+    (!productionRequired || data.mode === 'production') && typeof data.ssoAvailable === 'boolean';
 }
 
 /** Validate the account before it becomes an actionable or persisted snapshot. */
@@ -34,6 +39,18 @@ export function sessionRemainingMs(value: Credential | null, now = Date.now()): 
 export function canEditPilotApplication(account: Account | null, application: Item | undefined, credential: Credential | null): boolean {
   return !!account && account.status.mode === 'lab' && credential?.user.role === 'customer' &&
     (!application || ['review_required', 'information_required', 'declined'].includes(String(application.state)));
+}
+
+export function launchInterestChange(account: Account | null, credential: Credential | null) {
+  if (!account || credential?.user.role !== 'customer' ||
+      credential.user.subject !== account.profile.subject ||
+      account.status.capabilities?.launchInterest !== true) return null;
+  const record = account.launchInterest;
+  if (record === null) return { interested: true, revision: 0 };
+  if (!record || !['registered', 'withdrawn'].includes(record.state) ||
+      !Number.isSafeInteger(record.revision) || record.revision < 1 ||
+      typeof record.updatedAt !== 'string' || !Number.isFinite(Date.parse(record.updatedAt))) return null;
+  return { interested: record.state === 'withdrawn', revision: record.revision };
 }
 
 /** Session identity and freshness are separate: an old response from the same

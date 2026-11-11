@@ -5,7 +5,8 @@ Independent Expo / React Native customer app for **iPhone, iPad and Android**, w
 ## Implemented journeys
 
 - Home: actual application state, next action, explicit account-refresh age and unprovisioned service status.
-- Application: pilot details, device/SIM preference, consent and corrections requested by the team.
+- Launch: signed-in customers can register and withdraw a free expression of interest. The app shows the latest saved status and change time. Satellite service is pending a provider agreement.
+- Application (lab): pilot details, device/SIM preference, consent and corrections requested by the team.
 - Help: support cases, staff replies and customer follow-up, with bounded older-record pages.
 - Account: own requests/status, protected test PDFs, complete JSON export and sign-out.
 - Optional Explore preview: the earlier Home/Plans/Network/Account concept experience remains clearly fictional.
@@ -22,6 +23,8 @@ EXPO_PUBLIC_API_BASE_URL=http://192.168.1.20:4000 npm start
 ```
 
 Replace the example address with the deliberately exposed lab API. Loopback on a phone refers to the phone; use a reachable private LAN address, or `10.0.2.2` for an Android emulator reaching its host. Production builds reject cleartext HTTP and need an HTTPS origin or HTTPS gateway URL ending in `/api`. No API address means account access is unconfigured and the concept preview remains available.
+
+The public customer origin `https://mobile.onesa.eu` requires production service discovery and shared Onesa sign-in. A response from an isolated lab at this address leaves account access closed. Use the lab's own address for hardware tests.
 
 The only public build variable is the API address. **Never embed an OIDC client secret, encryption key or provider credential in an Expo public variable.** Server configuration and secrets stay on the API.
 
