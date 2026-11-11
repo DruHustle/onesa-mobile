@@ -121,6 +121,7 @@ jobs:
     - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
       with:
         persist-credentials: false
+        fetch-depth: 2
     - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
       with:
         node-version: 24.22.1
@@ -135,6 +136,21 @@ jobs:
       run: npm run prepare:ios
     - name: Install generated native module pods
       run: pod install --project-directory=ios
+    - name: Select generic device validation for manual or native-source changes
+      id: device
+      working-directory: .
+      run: |
+        if [[ "$GITHUB_EVENT_NAME" != pull_request ]] || git diff --name-only HEAD^1 HEAD | grep -E '^((onesa-mobile-frontend/mobile/.*|scripts/ios-device-distribution\.sh|.github/workflows/onesa-mobile-native-compile\.yml))$' > /dev/null; then
+          echo 'needed=true' >> "$GITHUB_OUTPUT"
+        fi
+    - name: Check the release archive for real Apple device architecture
+      if: steps.device.outputs.needed == 'true'
+      env:
+        EXPO_PUBLIC_API_BASE_URL: https://mobile.onesa.eu/api
+      run: |
+        archive="$RUNNER_TEMP/OnesaMobilePreview-device.xcarchive"
+        trap 'rm -rf "$archive"' EXIT
+        bash "$GITHUB_WORKSPACE/scripts/ios-device-distribution.sh" check "$archive"
     - name: Compile the unsigned iPhone and iPad simulator target
       run: xcodebuild -workspace ios/OnesaMobilePreview.xcworkspace -scheme OnesaMobilePreview -configuration Debug
         -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath .validation/ios-build
