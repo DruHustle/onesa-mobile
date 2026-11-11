@@ -24,7 +24,7 @@ The former monorepo `portal_identity` job exercised Portal's migration 015 and i
 
 Keep `onesa-mobile` (`prj_VsgXltJg2z5BKPadggrKqZEBAOZ0`) in team `team_ZCFijEEeYUAKYka9HEyEeyGm`. Its custom domain is `mobile.onesa.eu`. Set its Git source to `DruHustle/onesa-mobile` and its root directory to `onesa-mobile-frontend/web`; preserve Node 24, Vite, `npm ci`, `npm run build` and `dist`.
 
-The initial read-only provider inventory on 9 November still found the project linked to `onesa-ug`. Production deployment `dpl_6csCVqHajhPfbzFCSnKmnok6E2FJ` was READY from the reviewed monorepo commit. Preserve that deployment for rollback. Qualify the restored source, reconnect the existing project, build a production candidate without assigning domains, verify its deployed routes/assets and explicit API-unavailable behavior, then promote that exact artifact. Recheck the actual Git link and production source before deleting `onesa-ug`.
+The initial read-only provider inventory on 9 November still found the project linked to `onesa-ug`. Production deployment `dpl_6csCVqHajhPfbzFCSnKmnok6E2FJ` was READY from the reviewed monorepo commit. The 11 November production readback subsequently confirmed that the verified custom domain serves the standalone `main` branch at `722504b4`. Public routes and the account-service holding response were exercised on that domain. [Production receipt](DEPLOYMENT.md#current-production-website).
 
 The website deliberately returns JSON 503 for `/api` until the persistent backend and Portal identity client are commissioned. Moving repositories must preserve this behavior. Native compilation and physical-device acceptance remain distinct from the website deployment.
 

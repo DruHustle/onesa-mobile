@@ -147,7 +147,7 @@ export default function App() {
   const [selectedPlan, setSelectedPlan] = useState<PlanId>("everyday");
   const [path, setPath] = useState<PathId>("mobile");
   const [apiStatus, setApiStatus] = useState(
-    "The preview works without an API connection.",
+    "You can explore the preview before customer accounts open.",
   );
   const [checking, setChecking] = useState(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -180,11 +180,10 @@ export default function App() {
         signal: AbortSignal.timeout(5000),
         headers: { Accept: "application/json" },
       });
-      if (!response.ok) throw new Error("unavailable");
-      setApiStatus(describeReadiness(await response.json()));
+      setApiStatus(describeReadiness(await response.json(), response.status));
     } catch {
       setApiStatus(
-        "Development API is unavailable. The local demo remains usable. Start the backend on port 4000 to connect it.",
+        "We couldn’t check service status. You can keep exploring the preview and try again later.",
       );
     } finally {
       setChecking(false);
@@ -681,8 +680,8 @@ export default function App() {
                         <div>
                           <h3>Experience prototype</h3>
                           <p>
-                            Responsive website, native app foundation and
-                            read-only development API.
+                            Explore sample plans and account screens using fictional
+                            data.
                           </p>
                         </div>
                       </div>
@@ -708,7 +707,7 @@ export default function App() {
                       </div>
                     </div>
                     <div className="api-check">
-                      <h3>Development connection</h3>
+                      <h3>Service availability</h3>
                       <p role="status" aria-live="polite">
                         {apiStatus}
                       </p>
@@ -718,7 +717,7 @@ export default function App() {
                         aria-busy={checking}
                         onClick={checkApi}
                       >
-                        {checking ? "Checking…" : "Check development API"}
+                        {checking ? "Checking…" : "Check service status"}
                       </button>
                     </div>
                     <p className="muted">

@@ -14,9 +14,11 @@ The first hosted scope is the prelaunch website and its clearly labelled synthet
 | Runtime / framework | Node.js 24 / Vite |
 | Install / build / output | `npm ci` / `npm run build` / `dist` |
 
-**Standalone transition:** these are the required settings for the restored repository. On 9 November 2026, the existing Vercel project was still Git-linked to `DruHustle/onesa-ug`, and its latest production deployment was `dpl_6csCVqHajhPfbzFCSnKmnok6E2FJ` from `0341f51dfc6bf41ee84bedb0dbac4de40f2725b5`. Retain this project and its domains, update the root directory and Git link after this restoration is qualified, then verify and promote the standalone artifact. [Transition details](STANDALONE_RESTORATION.md). The earlier receipt below records the original deployment and does not describe current DNS status.
+## Current production website
 
-The domain is attached to the project and ownership is verified, but its Cloudflare DNS record is still absent at this receipt. The required provider-confirmed record is CNAME **`mobile` → `b57a37bb0ba6b30a.vercel-dns-017.com.`**, in the existing Cloudflare `onesa.eu` zone, with DNS-only initially. Custom-domain DNS, certificate readiness and public serving behavior remain pending. Existing Vercel deployment protection remains enabled for URLs other than custom domains.
+On 11 November 2026, Vercel resolved `mobile.onesa.eu` to the READY production deployment `dpl_BGgNfva268NoUjAYN9pxih5BXu3i`. Its Git metadata identifies `DruHustle/onesa-mobile`, branch `main`, commit [`722504b4`](https://github.com/DruHustle/onesa-mobile/commit/722504b48551a89f7bf7c66a4410c1a9b5d34071). The custom domain is verified on the original Vercel project. [Standalone transition history](STANDALONE_RESTORATION.md).
+
+Anonymous HTTPS GET checks on the custom domain returned HTML 200 at `/`, `/account/`, `/internal/` and `/preview/internal/`. The health, session, sign-in start and service readiness routes under `/api` each returned JSON 503 with `BACKEND_NOT_CONNECTED` and no session cookie. The public website is serving from the standalone repository. Account and staff operations still require the persistent backend and shared identity client.
 
 Project settings select the web root; `vercel.json` intentionally contains no `rootDirectory` key. This deployment needs no backend URL, identity client secret, authentication key or database credential. Do not upload private environment files or unrelated product directories as standalone web assets.
 
@@ -37,7 +39,7 @@ Observed on **5 November 2026 at 23:23 UTC**. Authenticated hosted **GET** reque
 | `/api`, `/api/healthz`, `/api/v1/session`, `/api/v1/auth/onesa/start` | JSON **503**, `BACKEND_NOT_CONNECTED`, `no-store`, no session cookie |
 | Built JavaScript and CSS assets | **200**, correct MIME types, immutable caching |
 
-These are deployment-URL observations through authenticated Vercel access. Hosted POST and HEAD were **not** verified; neither anonymous custom-domain availability nor a working backend/sign-in is established by this receipt. The `mobile.onesa.eu` DNS change remains pending.
+These are deployment-URL observations through authenticated Vercel access. Hosted POST and HEAD were **not** verified; neither anonymous custom-domain availability nor a working backend/sign-in is established by this receipt. The November 11 custom-domain checks above supersede this November 5 observation.
 
 ## Routing and availability
 
