@@ -74,7 +74,7 @@ export function liveActionAvailability(action: LiveAction): BlockedLiveAction {
 
 export const PASOFI = {
   url: 'https://pasofi.mobile.onesa.eu',
-  introduction: 'Pasofi is Onesa Mobile’s community Wi-Fi product in Zimbabwe.',
+  introduction: 'PasoFi is Onesa Mobile’s community Wi-Fi product in Zimbabwe.',
   status: 'New purchases and hotspot connections are paused.',
 } as const;
 
@@ -90,8 +90,8 @@ export const NETWORK_FACTS = [
     description: 'Satellite mobile service can connect eligible phones directly where the operator, device and local approvals support it. Clear sky visibility and service limits matter.',
   },
   {
-    title: 'Pasofi Wi-Fi',
+    title: 'PasoFi Wi-Fi',
     tag: 'COMMUNITY HOTSPOTS',
-    description: `Your phone connects to a nearby Pasofi hotspot over Wi-Fi. ${PASOFI.status}`,
+    description: `Your phone connects to a nearby PasoFi hotspot over Wi-Fi. ${PASOFI.status}`,
   },
 ] as const;
