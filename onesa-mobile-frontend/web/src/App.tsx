@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { AppAvailability } from "./AppAvailability";
 import { pasofi } from "./pasofi";
 import { describeReadiness } from "./readiness.mjs";
 
@@ -734,6 +735,9 @@ export default function App() {
         )}
       </main>
       <footer>
+        <div className="shell">
+          <AppAvailability heading="Onesa Mobile apps" unpublished="Not published" />
+        </div>
         <div className="shell footer-inner">
           <a
             className="brand"

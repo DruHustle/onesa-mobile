@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
 import { chromium } from 'playwright';
+import { appStoreListings } from '../onesa-mobile-frontend/web/src/app-store-listings.ts';
 import { createPlatformServer } from '../onesa-mobile-backend/src/platform/http.ts';
 import { loadPlatformConfig } from '../onesa-mobile-backend/src/platform/config.ts';
 import { totpAt } from '../onesa-mobile-backend/src/auth/crypto.ts';
@@ -153,6 +154,17 @@ try {
   await publicPage.goto(origin+'/');
   await publicPage.getByRole('group', {name:'Connectivity paths'}).getByRole('button', {name:'Direct to satellite',exact:true}).click();
   assert.match(await publicPage.locator('#connection-details').innerText(), /unverified/);
+  const apps = publicPage.getByRole('region', {name:'Onesa Mobile apps'});
+  for (const {device, store, url} of appStoreListings) {
+    const platform = apps.getByRole('listitem').filter({hasText:device});
+    assert.ok((await platform.innerText()).includes(store));
+    if (url) {
+      assert.equal(await platform.getByRole('link').getAttribute('href'), url);
+    } else {
+      assert.match(await platform.innerText(), /Not published/);
+      assert.equal(await platform.getByRole('link').count(), 0);
+    }
+  }
   const pasofiUrl = 'https://pasofi.mobile.onesa.eu';
   const heroProduct = publicPage.getByRole('link', {name:'Visit Pasofi Wi-Fi',exact:true});
   assert.equal(await heroProduct.getAttribute('href'), pasofiUrl);
