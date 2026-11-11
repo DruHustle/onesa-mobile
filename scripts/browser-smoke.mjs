@@ -166,14 +166,14 @@ try {
     }
   }
   const pasofiUrl = 'https://pasofi.mobile.onesa.eu';
-  const heroProduct = publicPage.getByRole('link', {name:'Visit Pasofi Wi-Fi',exact:true});
+  const heroProduct = publicPage.getByRole('link', {name:'Visit PasoFi Wi-Fi',exact:true});
   assert.equal(await heroProduct.getAttribute('href'), pasofiUrl);
   assert.match(await publicPage.locator('.preview-bar').innerText(), /No service is being sold/);
-  await publicPage.getByRole('group', {name:'Connectivity paths'}).getByRole('button', {name:'Pasofi Wi-Fi',exact:true}).click();
-  const wifiPanel = publicPage.getByRole('region', {name:'Pasofi Wi-Fi',exact:true});
+  await publicPage.getByRole('group', {name:'Connectivity paths'}).getByRole('button', {name:'PasoFi Wi-Fi',exact:true}).click();
+  const wifiPanel = publicPage.getByRole('region', {name:'PasoFi Wi-Fi',exact:true});
   assert.match(await wifiPanel.innerText(), /Onesa Mobile’s community Wi-Fi product in Zimbabwe/);
   assert.match(await wifiPanel.innerText(), /New purchases and hotspot connections are paused/);
-  assert.equal(await wifiPanel.getByRole('link', {name:'Visit Pasofi Wi-Fi'}).getAttribute('href'), pasofiUrl);
+  assert.equal(await wifiPanel.getByRole('link', {name:'Visit PasoFi Wi-Fi'}).getAttribute('href'), pasofiUrl);
   const faq = publicPage.locator('summary').filter({hasText:'Will I need a Starlink dish?'});
   await faq.focus(); await publicPage.keyboard.press('Enter');
   assert.equal(await faq.evaluate(element => element.parentElement.open), true, 'FAQ is keyboard operable');
@@ -220,7 +220,7 @@ try {
 
   const customerContext = await context(), customerPage = await customerContext.newPage();
   await login(customerPage,accounts.customer,'customer');
-  assert.equal(await customerPage.getByRole('link', {name:'Visit Pasofi Wi-Fi'}).getAttribute('href'), pasofiUrl);
+  assert.equal(await customerPage.getByRole('link', {name:'Visit PasoFi Wi-Fi'}).getAttribute('href'), pasofiUrl);
   const skip=customerPage.getByRole('link',{name:'Skip to workspace content',exact:true});
   await skip.focus();
   assert.ok((await skip.boundingBox()).height>=44,'the focused skip link is readable and operable');
