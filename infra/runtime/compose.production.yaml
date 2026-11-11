@@ -1,6 +1,9 @@
 # Configuration candidate only. An approved HTTPS ingress and registered Mobile identity client are required.
 services:
   api:
+    build: !reset null
+    image: '${MOBILE_API_IMAGE:?Set the reviewed API image ID from the runtime build receipt}'
+    pull_policy: never
     environment:
       APP_MODE: production
       PUBLIC_ORIGIN: '${MOBILE_PUBLIC_ORIGIN:?Set the approved HTTPS origin}'
@@ -14,6 +17,10 @@ services:
     secrets:
       - onesa-client-secret
       - auth-encryption-key
+  web:
+    build: !reset null
+    image: '${MOBILE_GATEWAY_IMAGE:?Set the reviewed gateway image ID from the runtime build receipt}'
+    pull_policy: never
 networks:
   private:
     internal: false

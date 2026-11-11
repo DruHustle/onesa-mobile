@@ -102,7 +102,10 @@ jobs:
       run: docker compose -p "$MOBILE_CI_PROJECT" -f infra/runtime/compose.lab.yaml config --quiet
     - name: Build isolated lab and recovery tool
       run: |
-        docker compose -p "$MOBILE_CI_PROJECT" -f infra/runtime/compose.lab.yaml build --pull
+        bash scripts/build-production-runtime.sh "$(git rev-parse HEAD)" "$RUNNER_TEMP/mobile-runtime.env"
+        source "$RUNNER_TEMP/mobile-runtime.env"
+        docker image tag "$MOBILE_API_IMAGE" onesa-mobile-api:lab
+        docker image tag "$MOBILE_GATEWAY_IMAGE" onesa-mobile-web:lab
         docker build --pull -f infra/runtime/recovery.Dockerfile -t onesa-mobile-recovery:ci .
     - name: Start healthy lab
       run: docker compose -p "$MOBILE_CI_PROJECT" -f infra/runtime/compose.lab.yaml up -d --wait --wait-timeout
