@@ -1,41 +1,17 @@
-# Shared blue-green theme
+# Onesa Mobile and Pasofi theme
 
-Pasofi and Onesa Mobile use the same blue-green palette while retaining their
-own navigation, product behavior and readiness labels. This is visual alignment;
-it does not integrate their accounts, payments, APIs or runtime packages.
+Onesa Mobile uses the Onesa Learning Hub blues alongside the established greens of Pasofi, its community Wi-Fi product in Zimbabwe.
 
 | Role | Color |
 | --- | --- |
-| Primary action | Blue `#075CF5` with white text |
-| Primary hover | Darker blue `#0647C7` |
-| Brand surface and heading | Deep teal `#103C35` |
-| Strong green accent | Green `#006F53` |
-| Soft accent | Mint `#C7F5B5` with dark teal text |
-| Main background | Paper `#F8F9F5` |
-| Body text | Ink `#143B34` |
-| Secondary text | Muted `#5C716A` |
-| Borders | `#DAE3DA`; control borders `#718A78` |
-| Light supporting surfaces | Blue `#EAF2FF` or green `#E9F7EF` |
+| Onesa Mobile header, hero and headings | Learning Hub navy `#001A33` |
+| Primary Mobile action | Learning Hub blue `#0070F2` with white text |
+| Pressed action, emphasis and selected navigation text | Deep blue `#003A99` |
+| Informational surface | Light blue `#E6F0FF` |
+| Pasofi link and accent | Green `#006F53` |
+| Pasofi text and brand artwork | Forest `#103C35` |
+| Accent on dark surfaces | Mint `#C7F5B5` |
 
-Use blue for ordinary primary actions and deep teal/green for branded surfaces
-and supporting accents. Mint actions on dark branded panels are an intentional
-contrast variant. Keep warning/error colors and meanings distinct. Do not use
-purple or neon lime as unrelated brand accents.
+The public website, customer and staff workspaces, operations preview and native apps use these roles. Independently buildable packages define their own colors. Status text and functional warning/error colors retain their usual meanings.
 
-The palette is repeated within independently buildable packages; there is no
-cross-repository runtime import. Typography, spacing, responsive breakpoints,
-control dimensions and information architecture remain product-specific.
-Both current products retain their existing light-theme behavior.
-
-Changing colors must not change live/demo boundaries, payment capabilities,
-authentication, navigation, consent or product-readiness statements. Source
-checks and web previews do not establish native device or store qualification.
-
-## Onesa Mobile implementation
-
-Web public, customer-workspace and internal-operation primary buttons use the
-shared blue; their existing teal headers and mint accents remain. The native
-palette and button styles live in `onesa-mobile-frontend/mobile/src/ui.tsx`.
-Native pressed opacity stays high enough to preserve white-on-blue readability;
-disabled behavior and accessibility state remain unchanged. No generated native
-project, signing configuration or product capability is changed by the theme.
+The Mobile cellular service is in development. Pasofi manages hotspot availability, sales and customer support on its own site. A product link opens the [Pasofi website](https://pasofi.mobile.onesa.eu). New purchases and hotspot connections are currently paused. Update this status on public, account and native surfaces when operations change.

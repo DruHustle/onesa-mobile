@@ -6,14 +6,17 @@
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
-  color: #143b34;
+  color: #001a33;
   background: #f8f9f5;
   font-synthesis: none;
   font-weight: 400;
   line-height: 1.5;
-  --ink: #103c35;
-  --blue: #075cf5;
-  --blue-hover: #0647c7;
+  --ink: #001a33;
+  --forest: #103c35;
+  --green: #006f53;
+  --blue-tint: #e6f0ff;
+  --blue: #0070f2;
+  --blue-hover: #003a99;
   --muted: #5c716a;
   --mint: #c7f5b5;
   --line: #dae3da;
@@ -233,17 +236,17 @@ em {
   font-size: 0.875rem;
 }
 .preview-bar {
-  background: #e9efdf;
-  border-bottom: 1px solid #dce4d2;
+  background: var(--blue-tint);
+  border-bottom: 1px solid #cbdcf3;
   padding: 8px 0;
   font-size: 0.875rem;
-  color: #425742;
+  color: var(--blue-hover);
 }
 .status-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #637e38;
+  background: var(--green);
   display: inline-block;
   margin-right: 7px;
   vertical-align: middle;
@@ -265,7 +268,7 @@ em {
   text-transform: uppercase;
   font-weight: 700;
   margin-bottom: 14px;
-  color: #587160;
+  color: var(--blue-hover);
 }
 .hero h1 {
   font-size: clamp(3rem, 5.6vw, 5rem);
@@ -275,7 +278,7 @@ em {
   margin-bottom: 23px;
 }
 h1 em {
-  color: #66864d;
+  color: var(--blue-hover);
 }
 .lead {
   font-size: 1.17rem;
@@ -307,17 +310,24 @@ h1 em {
   gap: 10px;
   min-height: 44px;
 }
-.hero-footnote {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-  font-size: 0.875rem;
-  color: var(--muted);
+.pasofi-intro {
+  max-width: 435px;
+  padding: 4px 0 4px 16px;
+  border-inline-start: 3px solid var(--green);
 }
-.hero-footnote span:before {
-  content: "✓";
-  margin-right: 7px;
-  color: #739956;
+.pasofi-intro p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--forest);
+}
+.pasofi-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  color: var(--green);
+  font-weight: 700;
+  text-underline-offset: 3px;
 }
 .hero-visual {
   position: relative;
@@ -328,13 +338,13 @@ h1 em {
   justify-content: center;
   gap: 18px;
   border-radius: 150px 150px 20px 20px;
-  background: linear-gradient(145deg, #eaf2ff, #e9f7ef 50%, #c7f5b5);
+  background: linear-gradient(145deg, var(--blue-tint), #e9f7ef 50%, #c7f5b5);
   overflow: hidden;
   padding: 24px 35px 20px;
 }
 .orbit {
   position: absolute;
-  border: 1px solid #a4b59580;
+  border: 1px solid #557da780;
   border-radius: 50%;
   height: 500px;
   width: 500px;
@@ -491,7 +501,7 @@ h1 em {
   width: 33px;
   height: 33px;
   border-radius: 50%;
-  background: #e9efdf;
+  background: var(--blue-tint);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -748,6 +758,40 @@ footer {
   background: var(--ink);
   color: #e0eada;
 }
+.app-availability {
+  padding: 20px 0 16px;
+  border-bottom: 1px solid #416274;
+}
+.app-availability .store-listing > svg { color: var(--mint); }
+.app-availability h2 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  line-height: 1.45;
+  letter-spacing: normal;
+}
+.app-availability ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.app-availability li { padding: 0; }
+.app-availability .store-listing {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 4px 0;
+}
+.app-availability .store-listing > svg { flex-shrink: 0; }
+.app-availability .store-listing strong,
+.app-availability .store-listing small { display: block; }
+.app-availability .store-listing strong { font-size: 0.875rem; }
+.app-availability .store-listing small { font-size: 0.8125rem; line-height: 1.4; }
+.app-availability a.store-listing { text-underline-offset: 3px; }
+
 .footer-inner {
   display: flex;
   align-items: center;
@@ -1096,10 +1140,6 @@ dt {
     gap: 12px;
     flex-wrap: wrap;
   }
-  .hero-footnote {
-    gap: 12px;
-    font-size: 0.875rem;
-  }
   .plan-card {
     padding: 19px 17px;
   }
@@ -1222,10 +1262,6 @@ dt {
   }
   .text-link {
     font-size: 0.875rem;
-  }
-  .hero-footnote {
-    font-size: 0.875rem;
-    gap: 13px;
   }
   .hero-visual {
     min-height: 0;

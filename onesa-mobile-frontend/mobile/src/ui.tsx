@@ -3,10 +3,13 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 export const colors = {
   forest: "#103C35",
-  blue: "#075CF5",
+  navy: "#001A33",
+  blue: "#0070F2",
+  deepBlue: "#003A99",
+  blueTint: "#E6F0FF",
   mint: "#C7F5B5",
   green: "#006F53",
-  ink: "#143B34",
+  ink: "#001A33",
   muted: "#5C716A",
   background: "#F8F9F5",
   border: "#DAE3DA",
@@ -19,7 +22,7 @@ export const colors = {
 
 /** Decorative mark; pair with readable Onesa Mobile text. */
 export function BrandMark({ light = false }: { light?: boolean }) {
-  const backgroundColor = light ? colors.mint : colors.forest;
+  const backgroundColor = light ? colors.mint : colors.navy;
   return (
     <View
       style={styles.brandBars}
@@ -109,7 +112,8 @@ export function Button({
       style={({ pressed }) => [
         styles.button,
         secondary && styles.secondaryButton,
-        (pressed || disabled) && styles.pressed,
+        pressed && !disabled && !secondary && styles.primaryPressed,
+        (disabled || (pressed && secondary)) && styles.pressed,
       ]}
     >
       <Text
@@ -164,7 +168,7 @@ export const styles = StyleSheet.create({
   brand: {
     fontSize: 22,
     fontWeight: "800",
-    color: colors.forest,
+    color: colors.navy,
     letterSpacing: -0.8,
   },
   brandQualifier: { fontSize: 12, color: colors.muted, marginLeft: 1 },
@@ -180,13 +184,13 @@ export const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderBottomWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.pale,
+    backgroundColor: colors.blueTint,
   },
   demoText: { color: colors.ink, fontSize: 14, lineHeight: 21 },
   scroll: { flex: 1 },
   content: { padding: 16, paddingBottom: 24, gap: 14 },
   hero: {
-    backgroundColor: colors.forest,
+    backgroundColor: colors.navy,
     borderRadius: 14,
     padding: 16,
     gap: 10,
@@ -208,7 +212,7 @@ export const styles = StyleSheet.create({
     backgroundColor: colors.mint,
   },
   screenTitle: {
-    color: colors.forest,
+    color: colors.navy,
     fontSize: 29,
     lineHeight: 35,
     fontWeight: "800",
@@ -223,7 +227,7 @@ export const styles = StyleSheet.create({
   },
   small: { color: colors.muted, fontSize: 14, lineHeight: 21 },
   eyebrow: {
-    color: colors.green,
+    color: colors.deepBlue,
     fontSize: 12,
     lineHeight: 18,
     letterSpacing: 1.1,
@@ -231,7 +235,7 @@ export const styles = StyleSheet.create({
   },
   lightText: { color: colors.mint },
   sectionHeading: {
-    color: colors.forest,
+    color: colors.navy,
     fontSize: 18,
     lineHeight: 24,
     fontWeight: "700",
@@ -321,7 +325,10 @@ export const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   secondaryButtonText: { color: colors.ink },
+  primaryPressed: { backgroundColor: colors.deepBlue },
   pressed: { opacity: 0.9 },
+  productLink: { minHeight: 44, alignSelf: "flex-start", justifyContent: "center" },
+  productLinkText: { color: colors.green, fontSize: 15, fontWeight: "700", textDecorationLine: "underline" },
   steps: { gap: 14 },
   step: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
   stepNumber: {
@@ -395,7 +402,7 @@ export const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: "transparent",
   },
-  navIndicatorActive: { backgroundColor: colors.green },
+  navIndicatorActive: { backgroundColor: colors.blue },
   navText: {
     color: colors.muted,
     fontSize: 14,
@@ -403,7 +410,7 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
     textAlign: "center",
   },
-  navTextActive: { color: colors.green, fontWeight: "800" },
+  navTextActive: { color: colors.deepBlue, fontWeight: "800" },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   gridCell: { flexBasis: 240, flexGrow: 1, flexShrink: 1 },
 });

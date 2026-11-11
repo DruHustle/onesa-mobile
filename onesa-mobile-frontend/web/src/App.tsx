@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { AppAvailability } from "./AppAvailability";
+import { pasofi } from "./pasofi";
 import { describeReadiness } from "./readiness.mjs";
 
 type DemoTab = "Overview" | "My plan" | "Billing" | "Help";
@@ -75,12 +77,12 @@ const paths: Record<
     note: "Zimbabwe availability, supported devices and Onesa wholesale access are unverified. Native satellite calls and unrestricted broadband are not promised.",
   },
   wifi: {
-    name: "Satellite Wi-Fi",
-    steps: ["Your phone on Wi-Fi", "Local router + dish", "Starlink internet"],
-    title: "A connection shared in one place.",
+    name: "Pasofi Wi-Fi",
+    steps: ["Your phone on Wi-Fi", "Pasofi hotspot", "Site internet connection"],
+    title: "Pasofi community Wi-Fi",
     description:
-      "A dish supplies internet to a local Wi-Fi hotspot. This is a separate product with a local coverage area and its own resale requirements.",
-    note: "A Wi-Fi hotspot is not a direct phone-to-satellite subscription.",
+      `${pasofi.introduction} A nearby hotspot connects your phone to the site’s internet connection over Wi-Fi.`,
+    note: pasofi.status,
   },
 };
 
@@ -278,10 +280,9 @@ export default function App() {
                     Understand the connection ↓
                   </a>
                 </div>
-                <div className="hero-footnote">
-                  <span>Simple plans</span>
-                  <span>Clear controls</span>
-                  <span>Made for mobile</span>
+                <div className="pasofi-intro">
+                  <a className="pasofi-link" href={pasofi.url}>Visit Pasofi Wi-Fi <Arrow /></a>
+                  <p>{pasofi.introduction} {pasofi.status}</p>
                 </div>
               </div>
               <div className="hero-visual">
@@ -359,6 +360,7 @@ export default function App() {
                     <h3>{connection.title}</h3>
                     <p>{connection.description}</p>
                     <p className="connection-note">{connection.note}</p>
+                    {path === "wifi" && <a className="pasofi-link" href={pasofi.url}>Visit Pasofi Wi-Fi <Arrow /></a>}
                   </div>
                   <ol className="route-steps">
                     {connection.steps.map((step, index) => (
@@ -438,9 +440,9 @@ export default function App() {
                   <summary>Will I need a Starlink dish?</summary>
                   <p>
                     Direct-to-cell service uses a compatible phone and an
-                    eligible mobile subscription, without your own dish. A
-                    Starlink Wi-Fi hotspot uses a dish and is a different
-                    service.
+                    eligible mobile subscription, without your own dish. With
+                    Pasofi Wi-Fi, your phone joins a nearby community hotspot.
+                    {" "}{pasofi.status}
                   </p>
                 </details>
                 <details>
@@ -733,6 +735,9 @@ export default function App() {
         )}
       </main>
       <footer>
+        <div className="shell">
+          <AppAvailability heading="Onesa Mobile apps" unpublished="Not published" />
+        </div>
         <div className="shell footer-inner">
           <a
             className="brand"
