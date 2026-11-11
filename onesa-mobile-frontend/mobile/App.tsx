@@ -26,6 +26,7 @@ import * as WebBrowser from "expo-web-browser";
 import * as Sharing from "expo-sharing";
 import { File, Paths } from "expo-file-system";
 import PreviewApp from "./src/PreviewApp";
+import { PasofiCard } from "./src/PasofiCard";
 import {
   inSession,
   SessionBoundary,
@@ -1017,6 +1018,7 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
                 Explore without signing in
               </Button>
             </Card>
+            <PasofiCard />
           </>
         ) : (
           <>
@@ -1073,6 +1075,7 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
                     Refresh account
                   </Button>
                 </Card>
+                <PasofiCard />
                 <Card>
                   <SectionHeading>Next step</SectionHeading>
                   <Text style={styles.body}>

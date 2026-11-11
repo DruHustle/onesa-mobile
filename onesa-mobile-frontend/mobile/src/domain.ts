@@ -72,6 +72,12 @@ export function liveActionAvailability(action: LiveAction): BlockedLiveAction {
   return { allowed: false, reason: reasons[action] };
 }
 
+export const PASOFI = {
+  url: 'https://pasofi.mobile.onesa.eu',
+  introduction: 'Pasofi is Onesa Mobile’s community Wi-Fi product in Zimbabwe.',
+  status: 'New purchases and hotspot connections are paused.',
+} as const;
+
 export const NETWORK_FACTS = [
   {
     title: 'Mobile network',
@@ -84,8 +90,8 @@ export const NETWORK_FACTS = [
     description: 'Satellite mobile service can connect eligible phones directly where the operator, device and local approvals support it. Clear sky visibility and service limits matter.',
   },
   {
-    title: 'Starlink Wi-Fi',
-    tag: 'A DIFFERENT CONNECTION',
-    description: 'A Starlink dish supplies internet to a Wi-Fi router. Your phone joins that Wi-Fi nearby. This is separate from a direct satellite mobile service.',
+    title: 'Pasofi Wi-Fi',
+    tag: 'COMMUNITY HOTSPOTS',
+    description: `Your phone connects to a nearby Pasofi hotspot over Wi-Fi. ${PASOFI.status}`,
   },
 ] as const;

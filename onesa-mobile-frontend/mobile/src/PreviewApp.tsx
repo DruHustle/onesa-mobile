@@ -1,5 +1,6 @@
 import { useReducer } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
+import { PasofiCard } from "./PasofiCard";
 import { StatusBar } from "expo-status-bar";
 import {
   SafeAreaProvider,
@@ -97,17 +98,7 @@ function HomeScreen({
         </View>
       </Card>
 
-      <Card tinted>
-        <Label>THE NEXT HORIZON</Label>
-        <Text style={styles.cardHeading}>What could satellite add?</Text>
-        <Text style={styles.body}>
-          Learn how direct phone connectivity differs from Starlink Wi-Fi, and
-          what still needs to be confirmed.
-        </Text>
-        <Button secondary onPress={() => navigate("network")}>
-          Understand the network
-        </Button>
-      </Card>
+      <PasofiCard />
     </>
   );
 }
