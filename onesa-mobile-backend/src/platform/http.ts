@@ -3,7 +3,7 @@ import {
   type IncomingMessage,
   type ServerResponse,
 } from "node:http";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { isIP } from "node:net";
 import { once } from "node:events";
 import { z } from "zod";
@@ -34,9 +34,12 @@ const allowedHeaders = new Set([
   "idempotency-key",
   "x-csrf-token",
 ]);
+const signInPageStyle = `html{font:100%/1.55 system-ui,sans-serif;color:#17314b;background:#f5faf8}
+main{max-width:34rem;margin:clamp(1rem,9vh,5rem) auto;padding:1.5rem}
+h1{font-size:1.7rem;line-height:1.2}a{color:#0757ad;font-weight:600}
+nav a{display:block;padding:.55rem 0}a:focus-visible{outline:3px solid #00775c;outline-offset:2px}`;
+const signInPageStyleHash = createHash("sha256").update(signInPageStyle).digest("base64");
 export function createPlatformServer(config: PlatformConfig) {
-  const store = new Store(config.databasePath),
-    platform = new Platform(store, config.mode);
   const auth = new AuthService({
     mode: config.mode,
     databasePath: config.databasePath,
@@ -45,6 +48,14 @@ export function createPlatformServer(config: PlatformConfig) {
     ...(config.encryptionKey ? { encryptionKey: config.encryptionKey } : {}),
     ...(config.onesa ? { onesa: config.onesa } : {}),
   });
+  let store: Store;
+  try {
+    store = new Store(config.databasePath);
+  } catch (error) {
+    auth.close();
+    throw error;
+  }
+  const platform = new Platform(store, config.mode);
   const origins = new Set([...config.allowedOrigins, config.publicOrigin]);
   const rate = new Map<string, { start: number; count: number }>();
   function json(
@@ -69,6 +80,35 @@ export function createPlatformServer(config: PlatformConfig) {
   ): void {
     res.shouldKeepAlive = false;
     res.setHeader("Connection", "close");
+    const path = req.url?.split("?", 1)[0];
+    if (req.method === "GET" && (path === "/v1/auth/onesa/start" || path === "/v1/auth/onesa/callback")) {
+      res.setHeader("Vary", "Origin, Accept, Sec-Fetch-Mode");
+      // Browsers request HTML first on navigation. API callers default to JSON.
+      const mode = req.headers["sec-fetch-mode"];
+      const preferred = req.headers.accept?.split(",", 1)[0]?.trim().toLowerCase();
+      if ((!mode || mode === "navigate") && preferred === "text/html") {
+        const guidance = status >= 500 || status === 429
+          ? "Onesa sign-in is unavailable right now. Return to your workspace and try again later."
+          : status === 403
+            ? "Return to your workspace and sign in with an account that has access."
+            : "Return to your workspace and start a new sign-in.";
+        const page = `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign-in incomplete · Onesa Mobile</title><style>${signInPageStyle}</style></head>
+<body><main><p>Onesa Mobile</p><h1>Sign-in incomplete</h1><p>${guidance}</p>
+<nav aria-label="Return to a workspace"><a href="/account/">Return to customer account</a>
+<a href="/internal/">Return to staff sign-in</a></nav>
+<p>Using the Onesa Mobile app? Close this browser window, return to the app and choose “Continue with Onesa”.</p>
+</main></body></html>`;
+        res.writeHead(status, {
+          "Content-Type": "text/html; charset=utf-8",
+          "Content-Length": Buffer.byteLength(page),
+          "Content-Security-Policy": `default-src 'none'; style-src 'sha256-${signInPageStyleHash}'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'`,
+        });
+        res.end(page);
+        return;
+      }
+    }
     json(req, res, status, {
       error: { code, message },
       requestId: res.getHeader("X-Request-Id"),
@@ -432,6 +472,9 @@ export function createPlatformServer(config: PlatformConfig) {
               displayName: actor.displayName,
             }),
         );
+        // Read the preference from the same snapshot as the streamed collections.
+        const [launchInterest] = snapshot.rows("launchInterests");
+        await send(',"launchInterest":' + JSON.stringify(launchInterest ?? null));
         for (const kind of [
           "applications",
           "tickets",
@@ -542,6 +585,10 @@ export function createPlatformServer(config: PlatformConfig) {
         platform.request(actor, input, key),
     };
     const key = String(req.headers["idempotency-key"] ?? "");
+    if (method === "POST" && path === "/v1/account/launch-interest") {
+      json(req, res, 200, platform.setLaunchInterest(actor, await body(req), key));
+      return;
+    }
     if (method === "POST" && postHandlers[path]) {
       const result = postHandlers[path](await body(req), key);
       json(req, res, 201, result);

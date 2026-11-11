@@ -17,6 +17,11 @@ export interface Item {
 }
 export interface Account {
   profile: { subject: string; displayName: string };
+  launchInterest?: {
+    state: "registered" | "withdrawn";
+    revision: number;
+    updatedAt: string;
+  } | null;
   applications: Item[];
   tickets: Item[];
   ledger: Item[];
@@ -26,6 +31,7 @@ export interface Account {
     mode: string;
     productionReady: boolean;
     commercialSalesEnabled: boolean;
+    capabilities?: { launchInterest?: boolean };
   };
   pageLimit?: number;
   counts?: Record<string, number>;

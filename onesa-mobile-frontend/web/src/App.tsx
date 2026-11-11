@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AppAvailability } from "./AppAvailability";
 import { pasofi } from "./pasofi";
-import { describeReadiness } from "./readiness.mjs";
+import { describeReadiness, publicLaunchInterestOpen } from "./readiness.mjs";
 
 type DemoTab = "Overview" | "My plan" | "Billing" | "Help";
 type PlanId = "everyday" | "reach" | "family-farm";
@@ -149,9 +149,11 @@ export default function App() {
   const [selectedPlan, setSelectedPlan] = useState<PlanId>("everyday");
   const [path, setPath] = useState<PathId>("mobile");
   const [apiStatus, setApiStatus] = useState(
-    "You can explore the preview before customer accounts open.",
+    "Checking account availability…",
   );
-  const [checking, setChecking] = useState(false);
+  const [checking, setChecking] = useState(true);
+  const [interestOpen, setInterestOpen] = useState(false);
+  const [statusCheck, setStatusCheck] = useState(0);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const plan = plans.find((item) => item.id === selectedPlan)!;
   const connection = paths[path];
@@ -175,22 +177,43 @@ export default function App() {
     setSelectedPlan(id);
     navigate("demo", "My plan");
   }
-  async function checkApi() {
-    setChecking(true);
-    try {
-      const response = await fetch("/api/v1/readiness", {
-        signal: AbortSignal.timeout(5000),
+  useEffect(() => {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), 5000);
+    let current = true;
+    async function readStatus() {
+      setChecking(true);
+      const options: RequestInit = {
+        signal: controller.signal, credentials: "omit", cache: "no-store",
         headers: { Accept: "application/json" },
-      });
-      setApiStatus(describeReadiness(await response.json(), response.status));
-    } catch {
-      setApiStatus(
-        "We couldn’t check service status. You can keep exploring the preview and try again later.",
-      );
-    } finally {
-      setChecking(false);
+      };
+      try {
+        let response = await fetch("/api/v1/status", options);
+        // Older preview servers only expose the fictional readiness endpoint.
+        if (response.status === 404) response = await fetch("/api/v1/readiness", options);
+        const value = await response.json();
+        const description = describeReadiness(value, response.status);
+        if (current) {
+          setApiStatus(description);
+          setInterestOpen(publicLaunchInterestOpen(value, response.status));
+        }
+      } catch {
+        if (current) {
+          setInterestOpen(false);
+          setApiStatus("Service status is temporarily unavailable. You can browse the preview and try again later.");
+        }
+      } finally {
+        window.clearTimeout(timer);
+        if (current) setChecking(false);
+      }
     }
-  }
+    void readStatus();
+    return () => {
+      current = false;
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [statusCheck]);
 
   return (
     <>
@@ -265,17 +288,17 @@ export default function App() {
                   spending and your people.
                 </p>
                 <p className="hero-detail">
-                  Our ambition: everyday mobile service with satellite access
-                  for places beyond the network. Partnerships and local
-                  approvals come first.
+                  We’re preparing mobile service for Zimbabwe. The satellite
+                  agreement is pending, and a launch date has yet to be set.
                 </p>
                 <div className="hero-actions">
-                  <button
-                    className="button primary"
-                    onClick={() => navigate("demo")}
-                  >
-                    Explore the app <Arrow />
-                  </button>
+                  {interestOpen ? (
+                    <a className="button primary" href="/account/">Register your interest <Arrow /></a>
+                  ) : (
+                    <button className="button primary" onClick={() => navigate("demo")}>
+                      Explore the app <Arrow />
+                    </button>
+                  )}
                   <a className="text-link" href="#how">
                     Understand the connection ↓
                   </a>
@@ -434,6 +457,7 @@ export default function App() {
                     No. This is a development preview. A host agreement, the
                     applicable licence and tested customer workflows are needed
                     before Onesa can offer service.
+                    {interestOpen && <> You can <a href="/account/">record your interest in your account</a> for free.</>}
                   </p>
                 </details>
                 <details>
@@ -717,7 +741,7 @@ export default function App() {
                         className="button light"
                         disabled={checking}
                         aria-busy={checking}
-                        onClick={checkApi}
+                        onClick={() => setStatusCheck(n => n + 1)}
                       >
                         {checking ? "Checking…" : "Check service status"}
                       </button>

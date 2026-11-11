@@ -181,7 +181,42 @@ try {
   record('public connectivity explanations and keyboard FAQ work');
   await assertLayout(publicPage,'public');
   await enlargedText(publicPage,'public');
+  // The lab workspace can exercise the preference, but only the production
+  // capability may advertise registration on the public website.
+  assert.equal(await publicPage.getByRole('link', {name:'Register your interest'}).count(), 0);
+  await publicPage.route('**/api/v1/status', route => route.fulfill({
+    json: {mode:'production',serviceStatus:'prelaunch',productionReady:false,
+      commercialSalesEnabled:false,networkConnected:false,capabilities:{launchInterest:true}},
+  }));
+  await publicPage.reload();
+  await publicPage.getByRole('link', {name:'Register your interest',exact:true}).click();
+  await publicPage.getByRole('heading', {name:'Customer sign-in',exact:true}).waitFor();
+  assert.equal(new URL(publicPage.url()).pathname, '/account/');
+  record('the public registration link requires the production capability and opens customer sign-in');
   await publicContext.close();
+
+  // Use a disposable signed-in account and present the same public and account
+  // fields as a production backend with no historic applications or receipts.
+  const prelaunchContext = await context(), prelaunchPage = await prelaunchContext.newPage();
+  await login(prelaunchPage, accounts.customer, 'customer');
+  for (const path of ['/api/v1/session', '/api/v1/me']) {
+    await prelaunchPage.route('**'+path, async route => {
+      const response = await route.fetch();
+      const value = await response.json();
+      if (path.endsWith('/session')) Object.assign(value, { mode:'production', authMode:'onesa', ssoAvailable:true });
+      else Object.assign(value.status, { mode:'production', capabilities:{ ...value.status.capabilities, subscriberPilot:false, labBilling:false } });
+      await route.fulfill({ response, json:value });
+    });
+  }
+  await prelaunchPage.goto(origin+'/account/#payments');
+  await prelaunchPage.reload();
+  await prelaunchPage.getByRole('heading', { name:'Overview', exact:true, level:1 }).waitFor();
+  const accountNav = prelaunchPage.getByRole('navigation', { name:'Account sections' });
+  assert.ok(await accountNav.getByRole('button', { name:'Help & support' }).isVisible());
+  assert.equal(await accountNav.getByRole('button', { name:/Pilot application|Payment records/ }).count(), 0);
+  await prelaunchPage.getByRole('button', {name:'Register my interest',exact:true}).waitFor();
+  record('production customer navigation opens launch interest and help without exposing empty lab workflows');
+  await prelaunchContext.close();
 
   const customerContext = await context(), customerPage = await customerContext.newPage();
   await login(customerPage,accounts.customer,'customer');
@@ -193,6 +228,25 @@ try {
   assert.equal(await customerPage.evaluate(()=>document.activeElement?.id),'mw-main','the skip link moves keyboard focus into the workspace');
   assert.ok((await skip.boundingBox()).height<=1,'the unfocused skip link cannot obscure workspace content');
   record('workspace skip navigation is keyboard operable and hidden when unfocused');
+  async function changeLaunchInterest(buttonName, state) {
+    const saved = customerPage.waitForResponse(response => new URL(response.url()).pathname === '/api/v1/account/launch-interest' && response.request().method() === 'POST');
+    await customerPage.getByRole('button', {name:buttonName,exact:true}).click();
+    const result = await saved;
+    assert.ok(result.ok(), 'launch preference saved');
+    const record = await result.json();
+    assert.equal(record.state, state);
+    await customerPage.getByRole('button', {name:state === 'registered' ? 'Withdraw interest' : 'Register my interest',exact:true}).waitFor();
+    return record;
+  }
+  const interest = await changeLaunchInterest('Register my interest','registered');
+  await customerPage.reload();
+  await customerPage.getByRole('button',{name:'Withdraw interest',exact:true}).waitFor();
+  const withdrawn = await changeLaunchInterest('Withdraw interest','withdrawn');
+  assert.equal(withdrawn.id, interest.id);
+  assert.ok(withdrawn.revision > interest.revision);
+  await section(customerPage,'home','Overview');
+  await customerPage.getByRole('button', {name:'Register my interest',exact:true}).waitFor();
+  record('customer registration and withdrawal use the same persisted preference after reload');
   await section(customerPage,'application','Pilot application');
   const applicationForm = customerPage.getByRole('form',{name:'Pilot application',exact:true});
   await applicationForm.getByLabel('Pilot participant name',{exact:false}).fill('Synthetic bench participant');
@@ -234,6 +288,11 @@ try {
 
   const staffContext = await context(), staffPage = await staffContext.newPage();
   await login(staffPage,accounts.operations,'staff');
+  await section(staffPage,'applications','Applications & interest');
+  const preferences = staffPage.locator('section.mw-panel').filter({has:staffPage.getByRole('heading',{name:'Customer launch preferences',exact:true})});
+  assert.match(await preferences.innerText(), /Withdrawn/);
+  assert.ok((await preferences.innerText()).includes(accounts.customer.subject));
+  record('authorized staff see the customer’s current launch preference');
   await section(staffPage,'hardware','Sites & equipment');
   await openDetails(staffPage,'Add a site');
   const siteForm = staffPage.getByRole('form',{name:'Add a site',exact:true});

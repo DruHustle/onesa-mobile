@@ -47,7 +47,7 @@ import {
   type Credential,
   type Item,
 } from "./src/api";
-import { AccountReadTracker, canEditPilotApplication, isAccountSnapshot, isSessionDiscovery, sessionRemainingMs } from "./src/account-state";
+import { AccountReadTracker, canEditPilotApplication, isAccountSnapshot, isPublicAccountApi, isSessionDiscovery, launchInterestChange, sessionRemainingMs } from "./src/account-state";
 import {
   BrandMark,
   Button,
@@ -74,6 +74,8 @@ const configuration = (() => {
     };
   }
 })();
+const publicApi = isPublicAccountApi(configuration.base);
+const unavailableProductionAccount = "The customer account service is unavailable. Retry the connection later.";
 // This queue must outlive MobileAccount: preview navigation unmounts that component.
 const privateStorage = new SessionStorage({
   read: (key) => SecureStore.getItemAsync(key),
@@ -194,7 +196,7 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
     [message, setMessage] = useState(""),
     [replyId, setReplyId] = useState<string | null>(null),
     [reply, setReply] = useState(""),
-    [requestType, setRequestType] = useState("sim_replacement"),
+    [requestType, setRequestType] = useState("data_correction"),
     [requestDetail, setRequestDetail] = useState("");
   const current = useRef<Credential | null>(null),
     requestKeys = useRef(new Map<string, string>()),
@@ -229,7 +231,7 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
     setMessage("");
     setReplyId(null);
     setReply("");
-    setRequestType("sim_replacement");
+    setRequestType("data_correction");
     setRequestDetail("");
     setError("");
     setNotice("");
@@ -280,7 +282,7 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
         throw Error("The account service is not configured.");
       if (
         !/^[A-Za-z0-9_-]{43}$/.test(value.token) ||
-        !value.user?.subject ||
+        !value.user?.subject || (publicApi && value.user.source !== "onesa") ||
         !Number.isFinite(value.user.expiresAt) ||
         value.user.expiresAt * 1000 <= Date.now()
       )
@@ -341,6 +343,16 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
         if (!read.isCurrent()) return;
         if (current.current?.token !== value.token)
           throw new StaleSessionError();
+        if (publicApi && data?.status?.mode === "lab") {
+          const cleared = await clearLocal();
+          if (cleared.isCurrent()) {
+            setDiscoveryUnavailable(true);
+            setSsoAvailable(false);
+            setAuthMode(null);
+            setError(unavailableProductionAccount);
+          }
+          return;
+        }
         if (!isAccountSnapshot(data, value.user.subject))
           throw Error("The account response could not be verified. Retry the account refresh.");
         setAccount((previous) =>
@@ -446,17 +458,21 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
           ]),
         );
         operation.assertCurrent();
-        const session = isSessionDiscovery(discovered) ? discovered : null;
+        const session = isSessionDiscovery(discovered, publicApi) ? discovered : null;
+        if (publicApi && !session && isSessionDiscovery(discovered))
+          discoveryProblem = unavailableProductionAccount;
         cleanupPending.current = false;
         setCleanupRequired(false);
         if (session) {
           setAuthMode(session.authMode);
           setSsoAvailable(session.ssoAvailable);
         }
-        if (stored) {
+        // Keep the saved token on-device until public service discovery succeeds.
+        if (stored && (!publicApi || session?.ssoAvailable)) {
           const value = JSON.parse(stored) as Credential;
           if (
             value.user?.expiresAt * 1000 > Date.now() &&
+            (!publicApi || value.user.source === "onesa") &&
             /^[A-Za-z0-9_-]{43}$/.test(value.token)
           ) {
             current.current = value;
@@ -588,7 +604,7 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
     [base, storageKey, saveCredential],
   );
   useEffect(() => {
-    if (!storageKey) return;
+    if (!storageKey || (publicApi && (authMode !== "onesa" || !ssoAvailable))) return;
     let listening = true;
     const handler = ({ url }: { url: string }) => {
       if (listening && url.startsWith("onesamobile://auth/callback"))
@@ -602,7 +618,7 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
       listening = false;
       listener.remove();
     };
-  }, [storageKey, completeNative, run]);
+  }, [storageKey, authMode, ssoAvailable, completeNative, run]);
   const signIn = () =>
     run(async (operation) => {
       if (!base) return;
@@ -855,6 +871,8 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
       setTab("Home");
     });
   const canEdit = canEditPilotApplication(account, application, credential);
+  const pilot = account ? account.status.mode === "lab" : credential?.user.source === "lab";
+  const interestChange = launchInterestChange(account, credential);
   const writesBlocked = busy || loading || stale || !account || cleanupRequired;
   const changeTab = (next: Tab) => {
     if (next === "Application" && application && canEdit && applicationDraftId.current !== application.id) beginCorrection();
@@ -880,7 +898,7 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
           <Text style={styles.demoText}>
             {authMode === "lab" || credential?.user.source === "lab"
               ? "Hardware pilot lab · no commercial mobile service"
-              : "Service preparation · availability subject to approved partners"}
+              : "Prelaunch · satellite agreement pending"}
           </Text>
         </View>
       </View>
@@ -945,8 +963,9 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
             <SectionHeading>Your mobile account</SectionHeading>
             <Card>
               <Text style={styles.body}>
-                See your application, get help and keep your account records in
-                one place.
+                {authMode === "lab"
+                  ? "Review your pilot application and get help from the team."
+                  : "Manage your launch interest, get help and see your account records."}
               </Text>
               {configuration.error ? (
                 <Text style={styles.body}>{configuration.error}</Text>
@@ -1032,27 +1051,35 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
                     <Text style={styles.cardHeading}>Your service</Text>
                     <Tag tone="amber">NOT PROVISIONED</Tag>
                   </View>
-                  <DetailRow
-                    label="Application"
-                    value={
-                      application
-                        ? human(application.state)
-                        : account
-                          ? "Not submitted"
-                          : "Waiting for refresh"
-                    }
-                  />
-                  <DetailRow
-                    label="Plan concept"
-                    value={
-                      application
-                        ? human(application.planId)
-                        : account
-                          ? "Not selected"
-                          : "Waiting for refresh"
-                    }
-                  />
-                  <DetailRow label="Usage" value="No host measurements" />
+                  {pilot ? (
+                    <>
+                      <DetailRow
+                        label="Application"
+                        value={
+                          application
+                            ? human(application.state)
+                            : account
+                              ? "Not submitted"
+                              : "Waiting for refresh"
+                        }
+                      />
+                      <DetailRow
+                        label="Plan concept"
+                        value={
+                          application
+                            ? human(application.planId)
+                            : account
+                              ? "Not selected"
+                              : "Waiting for refresh"
+                        }
+                      />
+                      <DetailRow label="Usage" value="No host measurements" />
+                    </>
+                  ) : (
+                    <Text style={styles.body}>
+                      Mobile plans, SIM activation and satellite service are unavailable during prelaunch.
+                    </Text>
+                  )}
                   <Text style={styles.small}>
                     {lastFetched
                       ? "Account checked " +
@@ -1076,43 +1103,55 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
                   </Button>
                 </Card>
                 <PasofiCard />
-                <Card>
-                  <SectionHeading>Next step</SectionHeading>
-                  <Text style={styles.body}>
-                    {!account
-                      ? "Reconnect and refresh your account to see the latest next step."
-                      : !application && account.status.mode !== "lab"
-                        ? "Applications are not open for commercial service. You can ask the team about availability."
-                      : !application
-                        ? "Submit a pilot application to record your device and SIM preference."
-                        : application.state === "information_required"
-                          ? String(
-                              application.reviewNote ??
-                                "Update the information requested by the team.",
-                            )
-                          : application.state === "awaiting_host"
-                            ? "Your pilot review is recorded. Activation requires an authorized host connection."
-                            : application.state === "declined"
-                              ? String(
-                                  application.reviewNote ??
-                                    "The pilot application was declined. You can ask support or submit another application.",
-                                )
-                              : "The team will review your pilot application."}
-                  </Text>
-                  {canEdit ? (
-                    <Button
-                      onPress={() => changeTab("Application")}
-                    >
-                      {application
-                        ? "Review your details"
-                        : "Start pilot application"}
-                    </Button>
-                  ) : (
-                    <Button onPress={() => setTab("Help")}>
-                      Contact support
-                    </Button>
-                  )}
-                </Card>
+                {pilot ? (
+                  <Card>
+                    <SectionHeading>Next step</SectionHeading>
+                    <Text style={styles.body}>
+                      {!account
+                        ? "Reconnect and refresh your account to see the latest next step."
+                        : !application
+                          ? "Submit a pilot application to record your device and SIM preference."
+                          : application.state === "information_required"
+                            ? String(
+                                application.reviewNote ??
+                                  "Update the information requested by the team.",
+                              )
+                            : application.state === "awaiting_host"
+                              ? "Your pilot review is recorded. Activation requires an authorized host connection."
+                              : application.state === "declined"
+                                ? String(
+                                    application.reviewNote ??
+                                      "The pilot application was declined. You can ask support or submit another application.",
+                                  )
+                                : "The team will review your pilot application."}
+                    </Text>
+                    {canEdit ? (
+                      <Button
+                        onPress={() => changeTab("Application")}
+                      >
+                        {application
+                          ? "Review your details"
+                          : "Start pilot application"}
+                      </Button>
+                    ) : (
+                      <Button onPress={() => setTab("Help")}>
+                        Contact support
+                      </Button>
+                    )}
+                  </Card>
+                ) : (
+                  <Card>
+                    <SectionHeading>Launch interest</SectionHeading>
+                    <Text style={styles.body}>
+                      {!interestChange
+                        ? "Check availability and get help with your launch interest."
+                        : interestChange.interested
+                          ? "Record your interest in future Onesa Mobile service for free."
+                          : "Your interest is registered. You can withdraw it at any time."}
+                    </Text>
+                    <Button onPress={() => changeTab("Application")}>View launch interest</Button>
+                  </Card>
+                )}
                 <Card>
                   <SectionHeading>
                     Connectivity, clearly explained
@@ -1130,7 +1169,45 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
                 </Card>
               </>
             ) : null}
-            {tab === "Application" ? (
+            {tab === "Application" && !pilot ? (
+              <>
+                <SectionHeading>Launch interest</SectionHeading>
+                <Card>
+                  <Text style={styles.body}>
+                    Onesa Mobile is preparing its service in Zimbabwe. The satellite agreement is pending.
+                    Registering your interest is free. It does not reserve a plan, activate a SIM or guarantee coverage.
+                  </Text>
+                  {interestChange ? (
+                    <>
+                      <DetailRow label="Your interest" value={
+                        account?.launchInterest?.state === "registered" ? "Registered"
+                          : account?.launchInterest?.state === "withdrawn" ? "Withdrawn" : "Not registered"
+                      } />
+                      {account?.launchInterest ? <DetailRow label="Last changed" value={new Date(account.launchInterest.updatedAt).toLocaleString()} /> : null}
+                      <Text style={styles.small}>You can change this preference at any time.</Text>
+                      <Button
+                        secondary={!interestChange.interested}
+                        disabled={writesBlocked}
+                        onPress={() => void run(operation => mutate(
+                          operation,
+                          "/v1/account/launch-interest",
+                          interestChange,
+                          interestChange.interested ? "Your launch interest was registered." : "Your launch interest was withdrawn.",
+                        ))}
+                      >
+                        {interestChange.interested ? "Register my interest" : "Withdraw my interest"}
+                      </Button>
+                    </>
+                  ) : (
+                    <Text style={styles.small}>
+                      {account ? "Launch interest is unavailable for this account." : "Refresh your account to see your launch interest."}
+                    </Text>
+                  )}
+                  <Button secondary onPress={() => setTab("Help")}>Ask about availability</Button>
+                </Card>
+              </>
+            ) : null}
+            {tab === "Application" && pilot ? (
               <>
                 <SectionHeading>Pilot application</SectionHeading>
                 <Text style={styles.body}>
@@ -1139,9 +1216,9 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
                 </Text>
                 {!canEdit ? (
                   <Card>
-                    <DetailRow label="Status" value={!account ? "Refresh required" : account.status.mode !== "lab" ? "Applications are not open" : human(application?.state)} />
+                    <DetailRow label="Status" value={!account ? "Refresh required" : human(application?.state)} />
                     <Text style={styles.body}>
-                      {!account ? "Refresh your account to see its current application status." : account.status.mode !== "lab" ? "Pilot applications are only available in the isolated lab. Commercial registration is not open. Ask the team about availability." : "Contact support to request a change while the application is with the host review queue."}
+                      {!account ? "Refresh your account to see its current application status." : "Contact support to request a change while the application is with the host review queue."}
                     </Text>
                     <Button onPress={() => setTab("Help")}>Ask for help</Button>
                   </Card>
@@ -1376,52 +1453,58 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
                     Sign out
                   </Button>
                 </Card>
-                <SectionHeading>Test receipts</SectionHeading>
-                <Text style={styles.body}>
-                  Lab records do not represent a charge or a tax invoice.
-                </Text>
-                {!account?.ledger.length ? (
-                  <Text style={styles.small}>
-                    {account ? "No test receipts have been recorded." : "Refresh your account to load test receipts."}
-                  </Text>
-                ) : (
-                  account.ledger.map((entry) => (
-                    <Card key={entry.id}>
-                      <DetailRow
-                        label={String(entry.reference)}
-                        value={
-                          "USD " + (Number(entry.amountMinor) / 100).toFixed(2)
-                        }
-                      />
-                      <DetailRow label="State" value={human(entry.state)} />
+                {pilot ? (
+                  <>
+                    <SectionHeading>Test receipts</SectionHeading>
+                    <Text style={styles.body}>
+                      Lab records do not represent a charge or a tax invoice.
+                    </Text>
+                    {!account?.ledger.length ? (
+                      <Text style={styles.small}>
+                        {account ? "No test receipts have been recorded." : "Refresh your account to load test receipts."}
+                      </Text>
+                    ) : (
+                      account.ledger.map((entry) => (
+                        <Card key={entry.id}>
+                          <DetailRow
+                            label={String(entry.reference)}
+                            value={
+                              "USD " + (Number(entry.amountMinor) / 100).toFixed(2)
+                            }
+                          />
+                          <DetailRow label="State" value={human(entry.state)} />
+                          <Button
+                            secondary
+                            onPress={() => shareDocument(entry)}
+                            disabled={busy}
+                          >
+                            Download and share test PDF
+                          </Button>
+                        </Card>
+                      ))
+                    )}
+                    {account?.cursors?.ledger ? (
                       <Button
                         secondary
-                        onPress={() => shareDocument(entry)}
                         disabled={busy}
+                        onPress={() => loadMore("ledger")}
                       >
-                        Download and share test PDF
+                        Load older receipts
                       </Button>
-                    </Card>
-                  ))
-                )}
-                {account?.cursors?.ledger ? (
-                  <Button
-                    secondary
-                    disabled={busy}
-                    onPress={() => loadMore("ledger")}
-                  >
-                    Load older receipts
-                  </Button>
+                    ) : null}
+                  </>
                 ) : null}
                 <Card>
                   <SectionHeading>Account requests</SectionHeading>
                   <Choice
                     label="Request type"
                     options={[
-                      ["sim_replacement", "SIM replacement"],
-                      ["number_porting", "Number transfer"],
                       ["data_correction", "Correct my data"],
                       ["account_closure", "Close account"],
+                      ...(pilot ? [
+                        ["sim_replacement", "SIM replacement"],
+                        ["number_porting", "Number transfer"],
+                      ] as const : []),
                     ]}
                     value={requestType}
                     onChange={setRequestType}
@@ -1500,7 +1583,7 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
                 <Text
                   style={[styles.navText, tab === name && styles.navTextActive]}
                 >
-                  {name}
+                  {name === "Application" && !pilot ? "Launch" : name}
                 </Text>
               </Pressable>
             ))}

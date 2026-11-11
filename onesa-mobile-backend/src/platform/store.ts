@@ -32,6 +32,7 @@ export class Store {
       CREATE TABLE IF NOT EXISTS platform_schema(version INTEGER PRIMARY KEY, installed_at TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS platform_records(kind TEXT NOT NULL,id TEXT PRIMARY KEY,owner TEXT NOT NULL,revision INTEGER NOT NULL CHECK(revision>0),payload TEXT NOT NULL CHECK(json_valid(payload)),created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
       CREATE INDEX IF NOT EXISTS platform_records_scope ON platform_records(kind,owner,created_at);
+      CREATE UNIQUE INDEX IF NOT EXISTS platform_launch_interest_owner ON platform_records(owner) WHERE kind='launchInterests';
       CREATE UNIQUE INDEX IF NOT EXISTS platform_asset_tag ON platform_records(json_extract(payload,'$.tag')) WHERE kind='assets';
       CREATE UNIQUE INDEX IF NOT EXISTS platform_ledger_reference ON platform_records(json_extract(payload,'$.reference')) WHERE kind='ledger';
       CREATE TABLE IF NOT EXISTS platform_audit(sequence INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT NOT NULL UNIQUE,actor TEXT NOT NULL,role TEXT NOT NULL,action TEXT NOT NULL,target TEXT NOT NULL,at TEXT NOT NULL,previous_hash TEXT NOT NULL,hash TEXT NOT NULL);

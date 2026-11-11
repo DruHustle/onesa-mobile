@@ -74,6 +74,8 @@ function validateDatabase(path, mode) {
     }
     const tables = new Set(db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(row => row.name));
     if (TABLES.some(table => !tables.has(table))) throw new RecoveryError('The database does not contain the complete Mobile platform and authentication schema.');
+    if (tables.has('mobile_auth_environment') && db.prepare('SELECT mode FROM mobile_auth_environment WHERE id=1').get()?.mode !== mode)
+      throw new RecoveryError('The database deployment mode does not match the archive mode.');
     const versions = db.prepare('SELECT version FROM platform_schema ORDER BY version').all();
     if (versions.length !== 1 || versions[0].version !== 1) throw new RecoveryError('This recovery tool supports Mobile platform schema version 1 only.');
     const invalidJson = db.prepare('SELECT count(*) AS n FROM platform_records WHERE json_valid(payload)=0').get();
@@ -234,6 +236,9 @@ export async function restoreBackup({ inputPath, databasePath, keyPath, mode, no
     let invalidatedSessions, disabledLabUsers = 0;
     try {
       db.exec('BEGIN IMMEDIATE');
+      // Older authenticated archives carry the deployment mode in the envelope only.
+      db.exec("CREATE TABLE IF NOT EXISTS mobile_auth_environment (id INTEGER PRIMARY KEY CHECK(id=1), mode TEXT NOT NULL CHECK(mode IN ('lab','production'))) STRICT");
+      db.prepare('INSERT OR IGNORE INTO mobile_auth_environment(id,mode) VALUES(1,?)').run(mode);
       invalidatedSessions = Number(db.prepare('SELECT count(*) AS n FROM mobile_auth_sessions').get().n);
       db.exec('DELETE FROM mobile_auth_sessions; DELETE FROM mobile_auth_flows; DELETE FROM mobile_auth_handoffs;');
       // Cover the authenticator's accepted +1 skew window as well as the current step.

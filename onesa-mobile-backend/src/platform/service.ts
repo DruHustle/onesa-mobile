@@ -46,6 +46,7 @@ export class Platform {
       networkConnected: false,
       commercialSalesEnabled: false,
       capabilities: {
+        launchInterest: true,
         hardwareInventory: true,
         commissioning: true,
         fieldTrialRecords: true,
@@ -85,6 +86,7 @@ export class Platform {
     );
     return {
       profile: { subject: actor.subject, displayName: actor.displayName },
+      launchInterest: this.store.list("launchInterests", actor.subject, 1)[0] ?? null,
       ...Object.fromEntries(
         Object.entries(pages).map(([kind, page]) => [kind, page.items]),
       ),
@@ -116,6 +118,7 @@ export class Platform {
         "trials",
         "gates",
         "applications",
+        "launchInterests",
         "tickets",
         "requests",
         "ledger",
@@ -152,6 +155,7 @@ export class Platform {
       trials: "hardware.read",
       gates: "readiness.read",
       applications: "subscribers.read",
+      launchInterests: "subscribers.read",
       tickets: "support.read",
       requests: "support.read",
       ledger: "billing.read",
@@ -647,6 +651,24 @@ export class Platform {
       return result;
     });
   }
+  setLaunchInterest(actor: Actor, input: unknown, key: string): RecordItem | null {
+    if (actor.role !== "customer")
+      throw new DomainError(403, "CUSTOMER_REQUIRED", "Use your customer account to set launch interest.");
+    const data = parse(schemas.launchInterest, input);
+    return this.write(actor, key, "account.launch_interest", data, () => {
+      const current = this.store.list("launchInterests", actor.subject, 1)[0];
+      const state = data.interested ? "registered" : "withdrawn";
+      if (current?.state === state) return current;
+      if (data.revision !== (current?.revision ?? 0))
+        throw new DomainError(409, "REVISION_CONFLICT", "Launch interest changed. Refresh your account before saving.");
+      if (!current && !data.interested) return null;
+      const record = current
+        ? this.store.update(current, data.revision, { state })
+        : this.store.insert("launchInterests", actor.subject, { state });
+      this.store.audit(actor, "launch_interest." + state, record.id);
+      return record;
+    });
+  }
   apply(actor: Actor, input: unknown, key: string): RecordItem {
     this.labOnly();
     if (actor.role !== "customer")
@@ -901,6 +923,8 @@ export class Platform {
   request(actor: Actor, input: unknown, key: string): RecordItem {
     const data = parse(schemas.request, input);
     return this.write(actor, key, "account.request", data, () => {
+      if (this.mode === "production" && ["sim_replacement", "number_porting"].includes(data.type))
+        throw new DomainError(503, "COMMERCIAL_SERVICE_UNAVAILABLE", "SIM replacement and number transfer are unavailable before service launches. Contact support with questions.");
       const item = this.store.insert("requests", actor.subject, {
         ...data,
         status: "received",

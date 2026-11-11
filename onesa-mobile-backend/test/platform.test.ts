@@ -63,6 +63,47 @@ function fault(code: string) {
   return (error: unknown) =>
     error instanceof DomainError && error.code === code;
 }
+test("production launch interest survives retries and stale devices without creating a subscription or charge", () => {
+  const store = new Store(":memory:");
+  const p = new Platform(store, "production");
+  try {
+    const register = { interested: true, revision: 0 };
+    const registrationKey = randomUUID();
+    assert.equal(p.setLaunchInterest(customer, { interested: false, revision: 0 }, randomUUID()), null);
+    const registered = p.setLaunchInterest(customer, register, registrationKey)!;
+    assert.equal(registered.state, "registered");
+    assert.equal(registered.owner, customer.subject);
+    assert.equal(registered.revision, 1);
+    assert.deepEqual(p.setLaunchInterest(customer, register, randomUUID()), registered);
+    const withdrawn = p.setLaunchInterest(customer, { interested: false, revision: 1 }, randomUUID())!;
+    assert.equal(withdrawn.id, registered.id);
+    assert.equal(withdrawn.state, "withdrawn");
+    assert.equal(withdrawn.revision, 2);
+    assert.throws(() => p.setLaunchInterest(customer, register, randomUUID()), fault("REVISION_CONFLICT"));
+    assert.throws(() => p.setLaunchInterest(customer, { interested: false, revision: 0 }, registrationKey), fault("IDEMPOTENCY_CONFLICT"));
+    assert.deepEqual(p.setLaunchInterest(customer, register, registrationKey), registered);
+    assert.deepEqual(store.list("launchInterests", customer.subject), [withdrawn]);
+    const renewed = p.setLaunchInterest(customer, { interested: true, revision: 2 }, randomUUID())!;
+    assert.equal(renewed.id, registered.id);
+    assert.equal(renewed.revision, 3);
+    assert.equal(renewed.state, "registered");
+    assert.equal(store.count("applications"), 0);
+    assert.equal(store.count("ledger"), 0);
+    assert.equal(store.count("launchInterests"), 1);
+    assert.equal(store.auditEntries().length, 3);
+    assert.equal(store.verifyAudit(), true);
+    assert.throws(() => p.apply(customer, appInput, randomUUID()), fault("COMMERCIAL_SERVICE_UNAVAILABLE"));
+    assert.throws(() => p.recordPayment(finance, {}, randomUUID()), fault("COMMERCIAL_SERVICE_UNAVAILABLE"));
+    assert.throws(() => p.networkOperation(), fault("PROVIDER_NOT_COMMISSIONED"));
+    for (const type of ["sim_replacement", "number_porting"])
+      assert.throws(() => p.request(customer, { type, detail: "Test request" }, randomUUID()), fault("COMMERCIAL_SERVICE_UNAVAILABLE"));
+    assert.equal(store.count("requests"), 0);
+    for (const type of ["data_correction", "account_closure"])
+      assert.equal(p.request(customer, { type, detail: "Test request" }, randomUUID()).status, "received");
+  } finally {
+    store.close();
+  }
+});
 function siteAsset(p: Platform) {
   const site = p.createSite(
     ops,

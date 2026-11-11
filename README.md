@@ -19,10 +19,10 @@ The proposed commercial model is a **Light MVNO**, with a licensed host supplyin
 | Surface | Route / source | Implemented behavior |
 | --- | --- | --- |
 | Public website | `/`, web `src/App.tsx` | Concept plans, three connectivity paths, FAQs, account/staff entry points |
-| Customer workspace | `/account/`, web `src/workspace/` | Pilot application/corrections, cases/replies, account requests, private test receipts, complete account export |
-| Staff operations | `/internal/`, web `src/workspace/` | Role-filtered inventory, commissioning, trial observations, launch evidence, application reviews, support, test ledger/refunds and audit |
+| Customer workspace | `/account/`, web `src/workspace/` | Free launch-interest registration and withdrawal, cases/replies, account requests and complete account export. Lab accounts also have pilot applications and test receipts |
+| Staff operations | `/internal/`, web `src/workspace/` | Role-filtered inventory, commissioning, trial observations, launch evidence and interest records, application reviews, support, test ledger/refunds and audit |
 | Isolated visual previews | `/#demo`, `/preview/internal/` | Explicitly fictional, browser-local examples; no operational authority |
-| Native customer app | `onesa-mobile-frontend/mobile/` | Home, Application, Help and Account; secure sessions, Onesa browser sign-in, explicit refresh, private downloads, optional local preview |
+| Native customer app | `onesa-mobile-frontend/mobile/` | Secure Onesa sign-in, launch-interest preferences, help, account requests, private downloads and an optional local preview |
 | API | `onesa-mobile-backend/` | Independent Node 24 service, SQLite transactions, authenticated REST contract, PDF generation |
 | Runtime and recovery | `infra/runtime/`, `scripts/` | Isolated lab Compose stack, production configuration candidate, authenticated encryption of backups and verified restore |
 | Reviews | `docs/reviews/` | Telecom, graphics, telecom UX, cybersecurity and principal engineering findings |
