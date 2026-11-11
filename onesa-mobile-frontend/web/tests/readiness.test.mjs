@@ -9,7 +9,7 @@ test("API success cannot turn a preview into an advertised live service", () => 
       serviceStatus: "prelaunch",
       productionReady: false,
     }),
-    /activation remain unavailable/,
+    /Customer activation and mobile network service are pending/,
   );
   for (const value of [
     null,
@@ -20,4 +20,14 @@ test("API success cannot turn a preview into an advertised live service", () => 
   ]) {
     assert.throws(() => describeReadiness(value));
   }
+});
+
+test("the public holding response and a service outage have distinct status messages", () => {
+  const holding = { error: { code: "BACKEND_NOT_CONNECTED" } };
+  assert.match(describeReadiness(holding, 503), /accounts haven’t opened yet/);
+  assert.throws(() => describeReadiness(holding, 200));
+  assert.throws(() => describeReadiness({ error: { code: "UPSTREAM_TIMEOUT" } }, 503));
+  assert.throws(() => describeReadiness({
+    mode: "demo", serviceStatus: "prelaunch", productionReady: false,
+  }, 500));
 });
