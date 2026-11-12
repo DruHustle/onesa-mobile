@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { execFileSync } from "node:child_process";
 import {
   chmodSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync,
   rmSync, statSync, symlinkSync, writeFileSync,
@@ -137,3 +138,41 @@ test("non-file sidecars and a directory writable by other users are refused", ()
     assert.equal(existsSync(f.path), false);
   } finally { f.cleanup(); }
 });
+
+for (const order of ["auth-first", "platform-first", "legacy-hardening"] as const) {
+  test(`separate readers preserve live WAL locks and durable records after ${order} preparation`, () => {
+    const f = fixture();
+    const config = { mode: "lab" as const, databasePath: f.path,
+      publicOrigin: "http://localhost:5173", allowedOrigins: ["http://localhost:5173"] };
+    let auth: AuthStore | undefined, store: Store | undefined;
+    const externalRead = () => JSON.parse(execFileSync(process.execPath, ["--input-type=module", "-e", `
+      import { DatabaseSync } from 'node:sqlite';
+      const db = new DatabaseSync(process.argv[1]);
+      const result = {
+        auth: db.prepare('SELECT count(*) n FROM mobile_auth_events').get().n,
+        records: db.prepare('SELECT count(*) n FROM platform_records').get().n
+      };
+      db.close();
+      console.log(JSON.stringify(result));
+    `, f.path], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }));
+    try {
+      if (order === "auth-first") { auth = new AuthStore(config); store = new Store(f.path); }
+      else {
+        store = new Store(f.path);
+        if (order === "legacy-hardening")
+          for (const suffix of ["", "-wal", "-shm"]) chmodSync(f.path + suffix, 0o644);
+        auth = new AuthStore(config);
+      }
+      auth.record("synthetic-member", "session.created", "success");
+      store.insert("sites", "synthetic-owner", { name: "Before external reader" });
+      assert.deepEqual(externalRead(), { auth: 1, records: 1 });
+      for (const suffix of ["-wal", "-shm"])
+        assert.equal(existsSync(f.path + suffix), true, "a reader must not unlink a live writer's " + suffix);
+      auth.record("synthetic-member", "session.created", "success");
+      store.insert("sites", "synthetic-owner", { name: "After external reader" });
+      assert.deepEqual(externalRead(), { auth: 2, records: 2 });
+      store.close(); store = undefined; auth.close(); auth = undefined;
+      assert.deepEqual(externalRead(), { auth: 2, records: 2 }, "committed records must survive clean restart");
+    } finally { auth?.close(); store?.close(); f.cleanup(); }
+  });
+}

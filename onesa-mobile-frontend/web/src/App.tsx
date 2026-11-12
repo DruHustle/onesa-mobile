@@ -77,9 +77,9 @@ const paths: Record<
     note: "Zimbabwe availability, supported devices and Onesa wholesale access are unverified. Native satellite calls and unrestricted broadband are not promised.",
   },
   wifi: {
-    name: "Pasofi Wi-Fi",
-    steps: ["Your phone on Wi-Fi", "Pasofi hotspot", "Site internet connection"],
-    title: "Pasofi community Wi-Fi",
+    name: "PasoFi Wi-Fi",
+    steps: ["Your phone on Wi-Fi", "PasoFi hotspot", "Site internet connection"],
+    title: "PasoFi community Wi-Fi",
     description:
       `${pasofi.introduction} A nearby hotspot connects your phone to the site’s internet connection over Wi-Fi.`,
     note: pasofi.status,
@@ -304,7 +304,7 @@ export default function App() {
                   </a>
                 </div>
                 <div className="pasofi-intro">
-                  <a className="pasofi-link" href={pasofi.url}>Visit Pasofi Wi-Fi <Arrow /></a>
+                  <a className="pasofi-link" href={pasofi.url}>Visit PasoFi Wi-Fi <Arrow /></a>
                   <p>{pasofi.introduction} {pasofi.status}</p>
                 </div>
               </div>
@@ -383,7 +383,7 @@ export default function App() {
                     <h3>{connection.title}</h3>
                     <p>{connection.description}</p>
                     <p className="connection-note">{connection.note}</p>
-                    {path === "wifi" && <a className="pasofi-link" href={pasofi.url}>Visit Pasofi Wi-Fi <Arrow /></a>}
+                    {path === "wifi" && <a className="pasofi-link" href={pasofi.url}>Visit PasoFi Wi-Fi <Arrow /></a>}
                   </div>
                   <ol className="route-steps">
                     {connection.steps.map((step, index) => (
@@ -465,7 +465,7 @@ export default function App() {
                   <p>
                     Direct-to-cell service uses a compatible phone and an
                     eligible mobile subscription, without your own dish. With
-                    Pasofi Wi-Fi, your phone joins a nearby community hotspot.
+                    PasoFi Wi-Fi, your phone joins a nearby community hotspot.
                     {" "}{pasofi.status}
                   </p>
                 </details>

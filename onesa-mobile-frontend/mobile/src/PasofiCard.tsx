@@ -7,20 +7,20 @@ export function PasofiCard() {
     try {
       await Linking.openURL(PASOFI.url);
     } catch {
-      Alert.alert("Visit Pasofi Wi-Fi", `Open ${PASOFI.url} in your browser.`);
+      Alert.alert("Visit PasoFi Wi-Fi", `Open ${PASOFI.url} in your browser.`);
     }
   };
 
   return (
     <Card tinted>
-      <SectionHeading>Pasofi Wi-Fi</SectionHeading>
+      <SectionHeading>PasoFi Wi-Fi</SectionHeading>
       <Text style={styles.body}>{PASOFI.introduction} {PASOFI.status}</Text>
       <Pressable
         accessibilityRole="link"
         onPress={() => void openPasofi()}
         style={({ pressed }) => [styles.productLink, pressed && styles.pressed]}
       >
-        <Text style={styles.productLinkText}>Visit Pasofi Wi-Fi</Text>
+        <Text style={styles.productLinkText}>Visit PasoFi Wi-Fi</Text>
       </Pressable>
     </Card>
   );
