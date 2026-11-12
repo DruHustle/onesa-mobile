@@ -43,6 +43,7 @@ test("a production volume cannot be opened in lab mode, including after upgradin
 test("lab auth refuses the public customer origin and still accepts an isolated HTTPS lab", () => {
   const config = { mode: "lab" as const, databasePath: ":memory:", publicOrigin: "https://lab.example.test", allowedOrigins: ["https://lab.example.test"] };
   assert.throws(() => new AuthService({ ...config, allowedOrigins: [...config.allowedOrigins, "https://mobile.onesa.eu"] }), /public Onesa Mobile/);
+  assert.throws(() => new AuthService({ ...config, allowedOrigins: [...config.allowedOrigins, "https://pilot-mobile.vercel.app"] }), /public Onesa Mobile/);
   assert.throws(() => new AuthService({ ...config, publicOrigin: "https://mobile.onesa.eu", allowedOrigins: ["https://mobile.onesa.eu"] }), /public Onesa Mobile/);
   new AuthService(config).close();
 });

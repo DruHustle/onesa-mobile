@@ -1,5 +1,6 @@
 export function accountModeMatchesHost(hostname, session) {
-  return hostname !== "mobile.onesa.eu" ||
+  const isolated = ["localhost", "127.0.0.1", "[::1]", "10.0.2.2"].includes(hostname) || /\.(test|invalid)$/.test(hostname);
+  return isolated ||
     (session?.mode === "production" && session.authMode === "onesa" &&
       (!session.authenticated || session.user?.source === "onesa"));
 }

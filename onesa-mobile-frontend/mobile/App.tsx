@@ -74,7 +74,7 @@ const configuration = (() => {
     };
   }
 })();
-const publicApi = isPublicAccountApi(configuration.base);
+const publicApi = isPublicAccountApi(configuration.base, __DEV__);
 const unavailableProductionAccount = "The customer account service is unavailable. Retry the connection later.";
 // This queue must outlive MobileAccount: preview navigation unmounts that component.
 const privateStorage = new SessionStorage({
@@ -209,6 +209,10 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
   const [boundary] = useState(() => new SessionBoundary());
   const [accountReads] = useState(() => new AccountReadTracker());
   const base = configuration.base;
+  function openPortal(registration = false) {
+    const url = registration ? "https://portal.onesa.eu/account/register" : "https://portal.onesa.eu/account";
+    void Linking.openURL(url).catch(() => setNotice("Open " + url + " in your browser."));
+  }
   const resetPrivateState = useCallback(() => {
     accountReads.invalidate();
     current.current = null;
@@ -1023,10 +1027,14 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
                     take place in the shared Onesa sign-in service.
                   </Text>
                   {!ssoAvailable ? (
-                    <Text style={styles.small}>
-                      Account sign-in is awaiting configuration.
-                    </Text>
+                    <Text style={styles.small}>Account sign-in is awaiting configuration.</Text>
                   ) : null}
+                </>
+              )}
+              {(discoveryUnavailable || !base || (!loading && authMode !== "lab" && !ssoAvailable)) && (
+                <>
+                  <Button secondary onPress={() => openPortal()}>Sign in to Company Portal</Button>
+                  <Button secondary onPress={() => openPortal(true)}>Create an Onesa account</Button>
                 </>
               )}
               <Button

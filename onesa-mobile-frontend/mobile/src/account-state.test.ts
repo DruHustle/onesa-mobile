@@ -29,9 +29,11 @@ test('account records must have the right owner and usable lists before they are
 test('the public account API requires production discovery with central sign-in', () => {
   assert.equal(isPublicAccountApi('https://mobile.onesa.eu/api'), true);
   assert.equal(isPublicAccountApi('https://mobile.onesa.eu'), true);
-  assert.equal(isPublicAccountApi('https://lab.example.test/api'), false);
-  assert.equal(isPublicAccountApi('http://10.0.2.2:4000'), false);
-  assert.equal(isPublicAccountApi(null), false);
+  assert.equal(isPublicAccountApi('https://lab.example.test/api', true), false);
+  assert.equal(isPublicAccountApi('http://10.0.2.2:4000', true), false);
+  assert.equal(isPublicAccountApi(null), true);
+  assert.equal(isPublicAccountApi('http://10.0.2.2:4000'), true);
+  assert.equal(isPublicAccountApi('https://pilot-mobile.vercel.app', true), true);
   const lab = {mode: 'lab', authMode: 'lab', ssoAvailable: true};
   assert.equal(isSessionDiscovery(lab, true), false);
   assert.equal(isSessionDiscovery(lab, false), true);
