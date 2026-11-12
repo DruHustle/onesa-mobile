@@ -6,8 +6,10 @@ export interface SessionDiscovery {
   ssoAvailable: boolean;
 }
 
-export function isPublicAccountApi(base: string | null): boolean {
-  return base !== null && new URL(base).origin === 'https://mobile.onesa.eu';
+export function isPublicAccountApi(base: string | null, development = false): boolean {
+  if (!base || !development) return true;
+  const {hostname} = new URL(base);
+  return !["localhost", "127.0.0.1", "[::1]", "10.0.2.2"].includes(hostname) && !/\.(test|invalid)$/.test(hostname);
 }
 
 export function isSessionDiscovery(value: unknown, productionRequired = false): value is SessionDiscovery {

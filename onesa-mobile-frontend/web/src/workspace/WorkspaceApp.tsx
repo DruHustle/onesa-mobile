@@ -268,7 +268,7 @@ export default function WorkspaceApp({surface}:{surface:Surface}) {
       {authenticated&&content&&<aside className="mw-sidebar"><nav aria-label={surface==='staff'?'Operations sections':'Account sections'}>{sections.map(item=><button type="button" key={item.key} aria-current={item.key===selected.key?'page':undefined} onClick={()=>go(item.key)}>{item.label}<span aria-hidden="true">›</span></button>)}</nav><p>{surface==='staff'?'Your available tasks follow your assigned role.':'Your account, applications and support in one place.'}</p></aside>}
       <main id="mw-main" className="mw-main" tabIndex={-1}>
         {notice&&<div className="mw-notice" role="status"><span>{notice}</span><button className="mw-dismiss" type="button" aria-label="Dismiss status message" onClick={()=>setNotice(null)}>×</button></div>}
-        {pageError&&<div className="mw-error-banner" role="alert"><p>{pageError}</p><button type="button" className="mw-button mw-button-secondary" disabled={busy||refreshing} onClick={()=>void refresh()}>{refreshing?'Refreshing…':'Retry connection'}</button></div>}
+        {pageError&&<div className="mw-error-banner" role="alert"><p>{pageError}</p><button type="button" className="mw-button mw-button-secondary" disabled={busy||refreshing} onClick={()=>void refresh()}>{refreshing?'Refreshing…':'Retry connection'}</button>{!session && <PortalAccountLinks surface={surface}/>}</div>}
         {!session&&!pageError&&<Loading label="Checking secure access…"/>}
         {session&&!session.authenticated&&<SignIn session={session} surface={surface} busy={busy||refreshing} login={login}/>}
         {authenticated&&!sameSurface(session!,surface)&&<Panel title={surface==='staff'?'Staff access required':'Customer account required'}><p>This account is assigned to the {session!.user!.role==='customer'?'customer':'staff'} workspace. It cannot open this area.</p><a className="mw-button" href={session!.user!.role==='customer'?'/account/':'/internal/'}>Open your workspace</a></Panel>}
@@ -287,6 +287,13 @@ export default function WorkspaceApp({surface}:{surface:Surface}) {
 }
 
 function Loading({label}:{label:string}) {return <div className="mw-loading" role="status"><span className="mw-loading-dot" aria-hidden="true"/><p>{label}</p></div>;}
+function PortalAccountLinks({surface}:{surface:Surface}) {
+  return <span className="mw-secondary">
+    <a href="https://portal.onesa.eu/account">Sign in to Company Portal</a>
+    {surface === 'customer' && <> · <a href="https://portal.onesa.eu/account/register">Create an Onesa account</a></>}
+  </span>;
+}
+
 function SignIn({session,surface,busy,login}:{session:Session;surface:Surface;busy:boolean;login:(username:string,password:string,totp:string)=>Promise<void>}) {
   const [error,setError]=useState<string|null>(null),[sending,setSending]=useState(false);
   const errorTarget=useRef<HTMLParagraphElement|null>(null);
@@ -307,7 +314,7 @@ function SignIn({session,surface,busy,login}:{session:Session;surface:Surface;bu
         <label htmlFor="mw-password"><span>Lab password</span><input id="mw-password" name="password" type="password" autoComplete="current-password" required maxLength={256}/></label>
         {surface==='staff'&&<label htmlFor="mw-totp"><span>Authenticator code</span><input id="mw-totp" name="totp" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoComplete="one-time-code" required/><small>Enter the six-digit code from your authenticator.</small></label>}
         <button className="mw-button" type="submit" aria-busy={busy||sending}>{busy||sending?'Signing in…':'Sign in to pilot'}</button>
-      </fieldset>{error&&<p className="mw-form-error" role="alert" ref={errorTarget} tabIndex={-1}>{error}</p>}</form><p className="mw-secondary">Need a pilot account or credential reset? Contact the person who invited you to the pilot.</p></>:!session.ssoAvailable&&<Info tone="pending">Central Onesa sign-in is not configured for this workspace yet. Contact your Onesa administrator.</Info>}
+      </fieldset>{error&&<p className="mw-form-error" role="alert" ref={errorTarget} tabIndex={-1}>{error}</p>}</form><p className="mw-secondary">Need a pilot account or credential reset? Contact the person who invited you to the pilot.</p></>:!session.ssoAvailable&&<Info tone="pending">Mobile sign-in is awaiting configuration. <PortalAccountLinks surface={surface}/></Info>}
     </Panel>
   </div>;
 }

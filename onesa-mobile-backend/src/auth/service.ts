@@ -68,8 +68,9 @@ export class AuthService {
     if (config.mode === "production" && publicUrl.protocol !== "https:") throw new Error("Production authentication requires HTTPS.");
     const origins = config.allowedOrigins.map((value) => {
       const parsed = origin(value);
-      if (config.mode === "lab" && parsed.hostname === "mobile.onesa.eu")
-        throw new Error("The public Onesa Mobile customer domain requires production authentication.");
+      const isolated = ["localhost", "127.0.0.1", "[::1]", "10.0.2.2"].includes(parsed.hostname) || /\.(test|invalid)$/.test(parsed.hostname);
+      if (config.mode === "lab" && !isolated)
+        throw new Error("All public Onesa Mobile hosts require Company Portal authentication.");
       if (config.mode === "production" && parsed.protocol !== "https:") throw new Error("Production origins must use HTTPS.");
       return value;
     });

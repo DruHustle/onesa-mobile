@@ -9,6 +9,8 @@ test("the customer domain refuses lab sign-in and lab principals", () => {
   assert.equal(accountModeMatchesHost("mobile.onesa.eu", lab), false);
   assert.equal(accountModeMatchesHost("mobile.onesa.eu", { ...live, authenticated: true, user: { source: "lab" } }), false);
   assert.equal(accountModeMatchesHost("localhost", lab), true);
+  assert.equal(accountModeMatchesHost("pilot-mobile.vercel.app", lab), false);
+  assert.equal(accountModeMatchesHost("pilot-mobile.vercel.app", live), true);
 });
 
 test("API success cannot turn a preview into an advertised live service", () => {
