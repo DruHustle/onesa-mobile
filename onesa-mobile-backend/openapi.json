@@ -1655,6 +1655,27 @@
             "description": "Defaults to customer; staff requests MFA and source authentication no older than five minutes."
           },
           {
+            "name": "section",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "application",
+                "payments",
+                "help",
+                "account",
+                "hardware",
+                "trials",
+                "readiness",
+                "applications",
+                "support",
+                "billing",
+                "audit"
+              ]
+            },
+            "description": "Optional browser workspace section on the requested surface. Omit for its overview. Native sign-in uses its own registered callback."
+          },
+          {
             "name": "codeChallenge",
             "in": "query",
             "schema": {

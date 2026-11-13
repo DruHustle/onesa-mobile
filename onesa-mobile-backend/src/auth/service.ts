@@ -42,13 +42,19 @@ export interface LabCredentials {
   readonly totpSecret?: string;
   readonly otpAuthUri?: string;
 }
+const workspaceSections: Record<Surface, readonly string[]> = {
+  customer: ["application", "payments", "help", "account"],
+  staff: ["hardware", "trials", "readiness", "applications", "support", "billing", "audit"],
+};
+
 export interface OidcStart {
   readonly surface: Surface;
   readonly returnTo?: "/account/" | "/internal/";
+  readonly section?: string;
   readonly native?: { readonly codeChallenge: string; readonly state: string };
 }
 export interface AuthCompletion extends AuthIssue {
-  readonly returnTo: "/account/" | "/internal/";
+  readonly returnTo: string;
   readonly clearFlowCookie: string;
   readonly nativeRedirect?: string;
 }
@@ -281,8 +287,12 @@ export class AuthService {
   async beginOnesa(input: OidcStart): Promise<{ redirectUrl: string; flowCookie: string }> {
     if (!this.identity) throw new AuthError(503, "AUTH_NOT_CONFIGURED", "Onesa sign-in has not been configured for Mobile.");
     if (!["customer", "staff"].includes(input.surface)) throw new AuthError(400, "AUTH_SURFACE_INVALID");
-    const returnTo = input.returnTo ?? (input.surface === "staff" ? "/internal/" : "/account/");
-    if ((input.surface === "staff" && returnTo !== "/internal/") || (input.surface === "customer" && returnTo !== "/account/")) throw new AuthError(400, "AUTH_RETURN_INVALID");
+    const base = input.returnTo ?? (input.surface === "staff" ? "/internal/" : "/account/");
+    if ((input.surface === "staff" && base !== "/internal/") || (input.surface === "customer" && base !== "/account/")) throw new AuthError(400, "AUTH_RETURN_INVALID");
+    if (input.section !== undefined && (input.native || !workspaceSections[input.surface].includes(input.section))) {
+      throw new AuthError(400, "AUTH_RETURN_INVALID");
+    }
+    const returnTo = input.section ? base + "#" + input.section : base;
     if (input.native && (input.surface !== "customer" || !tokenPattern.test(input.native.codeChallenge) || !tokenPattern.test(input.native.state))) throw new AuthError(400, "AUTH_NATIVE_INVALID");
     const state = randomToken(), nonce = randomToken(), verifier = randomToken(), cookie = randomToken();
     const redirectUrl = await this.identity.authorization({ state, nonce, verifier, surface: input.surface });
@@ -312,9 +322,9 @@ export class AuthService {
       this.store.db.prepare("INSERT INTO mobile_auth_handoffs VALUES(?,?,?,?,?)").run(digest(code), flow.native_challenge, flow.native_state, seal(issue.token, this.store.key), nowSeconds() + 60);
       const destination = new URL("onesamobile://auth/callback");
       destination.searchParams.set("code", code); destination.searchParams.set("state", flow.native_state);
-      return { ...issue, returnTo: flow.return_to as "/account/", clearFlowCookie: this.clearFlowCookie(), nativeRedirect: destination.href };
+      return { ...issue, returnTo: flow.return_to, clearFlowCookie: this.clearFlowCookie(), nativeRedirect: destination.href };
     }
-    return { ...issue, returnTo: flow.return_to as "/account/" | "/internal/", clearFlowCookie: this.clearFlowCookie() };
+    return { ...issue, returnTo: flow.return_to, clearFlowCookie: this.clearFlowCookie() };
   }
   async exchangeNative(input: { code: string; state: string; verifier: string }): Promise<AuthIssue> {
     if (!tokenPattern.test(input.code) || !tokenPattern.test(input.state) || !/^[A-Za-z0-9._~-]{43,128}$/.test(input.verifier)) throw new AuthError(400, "AUTH_NATIVE_INVALID");

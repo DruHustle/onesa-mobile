@@ -90,6 +90,21 @@ test("live Portal assertions reject other products, malformed scope, missing sta
   assert.throws(() => validateOnesaAssertion("invalid", client, now), status(503));
   for (const invalid of [{ ...client, issuer: issuer + "/" }, { ...client, redirectUri: "https://other.example.invalid/api/v1/auth/onesa/callback" }, { ...client, clientId: "short" }, { ...client, clientSecret: "short" }]) assert.throws(() => validateOnesaConfig(invalid, publicOrigin));
 });
+test("browser destinations are confined to the chosen surface and do not change the native callback", async () => {
+  await mockProvider("support", async fixture => {
+    const flow = await fixture.auth.beginOnesa({ surface: "staff", section: "support" });
+    fixture.query = new URL(flow.redirectUrl).searchParams;
+    const callback = new URL(client.redirectUri);
+    callback.search = new URLSearchParams({ code: "synthetic-code", state: fixture.query.get("state")!, section: "billing" }).toString();
+    const issued = await fixture.auth.completeOnesa({ url: callback, flowCookie: flow.flowCookie });
+    assert.equal(issued.returnTo, "/internal/#support");
+    for (const section of ["support", "https://example.invalid", "../internal/", "help?x=1", ""]) {
+      await assert.rejects(fixture.auth.beginOnesa({ surface: "customer", section }), status(400, "AUTH_RETURN_INVALID"));
+    }
+    await assert.rejects(fixture.auth.beginOnesa({ surface: "customer", section: "help", native: { codeChallenge: token(), state: token() } }), status(400, "AUTH_RETURN_INVALID"));
+  });
+});
+
 test("actual OIDC code exchange validates signed identity and PKCE; access revalidates live grant each time", async () => {
   await mockProvider("operations", async (fixture) => {
     const start = await fixture.start();
@@ -243,7 +258,7 @@ test("verified Portal customer can manage launch interest through production HTT
       const address = server.address();
       assert.ok(address && typeof address === "object");
       const base = "http://127.0.0.1:" + address.port;
-      const start = await localFetch(base + "/v1/auth/onesa/start?surface=customer", { redirect: "manual" });
+      const start = await localFetch(base + "/v1/auth/onesa/start?surface=customer&section=help", { redirect: "manual" });
       assert.equal(start.status, 302);
       const authorization = new URL(start.headers.get("location")!);
       assert.equal(authorization.origin + authorization.pathname, issuer + "/auth");
@@ -253,7 +268,7 @@ test("verified Portal customer can manage launch interest through production HTT
         redirect: "manual", headers: { Cookie: start.headers.getSetCookie()[0]!.split(";")[0]! },
       });
       assert.equal(callback.status, 302);
-      assert.equal(callback.headers.get("location"), "/account/");
+      assert.equal(callback.headers.get("location"), "/account/#help");
       const sessionCookie = callback.headers.getSetCookie().find(cookie => cookie.startsWith("__Host-onesa_mobile_session="));
       assert.ok(sessionCookie);
       assert.match(sessionCookie, /; Secure/);
