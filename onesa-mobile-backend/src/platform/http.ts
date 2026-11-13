@@ -326,7 +326,7 @@ export function createPlatformServer(config: PlatformConfig) {
         );
       const flow = await auth.beginOnesa({
         surface: surface as "customer" | "staff",
-        returnTo: surface === "staff" ? "/internal/" : "/account/",
+        ...(url.searchParams.has("section") ? { section: url.searchParams.get("section")! } : {}),
         ...(codeChallenge && state ? { native: { codeChallenge, state } } : {}),
       });
       res.setHeader("Set-Cookie", flow.flowCookie);

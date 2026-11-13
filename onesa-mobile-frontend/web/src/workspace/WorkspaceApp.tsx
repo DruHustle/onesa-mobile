@@ -270,7 +270,7 @@ export default function WorkspaceApp({surface}:{surface:Surface}) {
         {notice&&<div className="mw-notice" role="status"><span>{notice}</span><button className="mw-dismiss" type="button" aria-label="Dismiss status message" onClick={()=>setNotice(null)}>×</button></div>}
         {pageError&&<div className="mw-error-banner" role="alert"><p>{pageError}</p><button type="button" className="mw-button mw-button-secondary" disabled={busy||refreshing} onClick={()=>void refresh()}>{refreshing?'Refreshing…':'Retry connection'}</button>{!session && <PortalAccountLinks surface={surface}/>}</div>}
         {!session&&!pageError&&<Loading label="Checking secure access…"/>}
-        {session&&!session.authenticated&&<SignIn session={session} surface={surface} busy={busy||refreshing} login={login}/>}
+        {session&&!session.authenticated&&<SignIn session={session} surface={surface} section={section} busy={busy||refreshing} login={login}/>}
         {authenticated&&!sameSurface(session!,surface)&&<Panel title={surface==='staff'?'Staff access required':'Customer account required'}><p>This account is assigned to the {session!.user!.role==='customer'?'customer':'staff'} workspace. It cannot open this area.</p><a className="mw-button" href={session!.user!.role==='customer'?'/account/':'/internal/'}>Open your workspace</a></Panel>}
         {authenticated&&sameSurface(session!,surface)&&!data&&!pageError&&<Loading label="Loading your workspace…"/>}
         {authenticated&&content&&<>
@@ -294,9 +294,12 @@ function PortalAccountLinks({surface}:{surface:Surface}) {
   </span>;
 }
 
-function SignIn({session,surface,busy,login}:{session:Session;surface:Surface;busy:boolean;login:(username:string,password:string,totp:string)=>Promise<void>}) {
+function SignIn({session,surface,section,busy,login}:{session:Session;surface:Surface;section:string;busy:boolean;login:(username:string,password:string,totp:string)=>Promise<void>}) {
   const [error,setError]=useState<string|null>(null),[sending,setSending]=useState(false);
   const errorTarget=useRef<HTMLParagraphElement|null>(null);
+  const startQuery=new URLSearchParams({surface});
+  const destinations=surface==='staff'?staffSections:customerSections;
+  if(section!=='home' && destinations.some(item=>item.key===section)) startQuery.set('section',section);
   useEffect(()=>{if(error)errorTarget.current?.focus();},[error]);
   async function submit(event:FormEvent<HTMLFormElement>) {
     event.preventDefault();if(busy||sending)return;
@@ -306,7 +309,7 @@ function SignIn({session,surface,busy,login}:{session:Session;surface:Surface;bu
   }
   return <div className="mw-sign-in"><section className="mw-sign-in-intro"><p className="mw-eyebrow">{surface==='staff'?'Onesa Mobile Operations':'My Onesa Mobile'}</p><h1>{surface==='staff'?'The work behind your network.':'Your next step, clearly.'}</h1><p>{surface==='staff'?'Manage the physical bench, review evidence and support pilot participants.':'Manage your launch preference, ask for help and find your account records.'}</p><div className="mw-sign-in-boundary"><strong>Prelaunch workspace</strong><span>No mobile line or satellite entitlement is activated by signing in.</span></div></section>
     <Panel title={surface==='staff'?'Staff sign-in':'Customer sign-in'} hint={session.authMode==='lab'?'Isolated lab accounts':'Your central Onesa account'}>
-      {session.ssoAvailable&&<div className="mw-sso"><a className="mw-button" href={`/api/v1/auth/onesa/start?surface=${surface}`}>Continue with Onesa</a><p className="mw-secondary">{surface === 'customer' && session.mode === 'production'
+      {session.ssoAvailable&&<div className="mw-sso"><a className="mw-button" href={`/api/v1/auth/onesa/start?${startQuery}`}>Continue with Onesa</a><p className="mw-secondary">{surface === 'customer' && session.mode === 'production'
         ? 'New to Onesa? Choose Create account on the next screen, verify your email, then request Onesa Mobile access. Once approved, return here to sign in.'
         : 'Use your central Onesa account. Password recovery is available on the next screen.'}</p></div>}
       {session.authMode==='lab'?<><Info>Use the pilot credentials supplied to you. These are lab accounts; do not enter a password from another service.{surface==='staff'?' Staff access also needs an authenticator code.':''}</Info><form className="mw-form mw-login-form" aria-label={`${surface==='staff'?'Staff':'Customer'} sign-in`} onSubmit={event=>void submit(event)}><fieldset disabled={busy||sending}><legend className="mw-visually-hidden">Pilot sign-in</legend>
