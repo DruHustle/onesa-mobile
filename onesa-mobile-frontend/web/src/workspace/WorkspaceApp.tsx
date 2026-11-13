@@ -261,12 +261,14 @@ export default function WorkspaceApp({surface}:{surface:Surface}) {
   const clipped=data&&data.counts?Object.entries(data.counts).filter(([key,count])=>collectionKeys.includes(key as Collection)&&count>collectionRows(data,key as Collection).length).map(([key])=>key as Collection):[];
   const moreCollections=(sectionCollections[selected.key]??[]).filter(kind=>Boolean(data?.cursors?.[kind]));
   const authenticated=Boolean(session?.authenticated&&session.user);
+  const workspaceLabel = surface === 'staff' ? 'Persistent operations records' : 'Your account workspace';
   return <div className="mw-root"><a className="mw-skip" href="#mw-main" onClick={event=>{event.preventDefault();document.getElementById('mw-main')?.focus();}}>Skip to workspace content</a>
     <header className="mw-header"><div className="mw-header-inner"><Brand staff={surface==='staff'}/><div className="mw-header-actions">{authenticated&&<span className="mw-user">{session!.user!.displayName}<small>{surface==='staff'?humanize(session!.user!.role):'Customer account'}</small></span>}<a href="/" className="mw-website-link">Website</a>{authenticated&&<button type="button" className="mw-header-button" disabled={busy} onClick={()=>void logout()}>Sign out</button>}</div></div></header>
-    <div className="mw-mode-strip"><div><span className="mw-mode-dot" aria-hidden="true"/>{session?.mode==='lab'?'LAB PILOT':'PRELAUNCH'}<span>{surface==='staff'?'Persistent operations records':'Your account workspace'}</span><strong>Mobile service is not active</strong></div></div>
+    <div className="mw-mode-strip"><div><span className="mw-mode-dot" aria-hidden="true"/>{session?.mode==='lab'?'LAB PILOT':'PRELAUNCH'}{session && <span>{workspaceLabel}</span>}<strong>Mobile service is not active</strong></div></div>
     <div className={authenticated&&content?'mw-layout':'mw-auth-layout'}>
       {authenticated&&content&&<aside className="mw-sidebar"><nav aria-label={surface==='staff'?'Operations sections':'Account sections'}>{sections.map(item=><button type="button" key={item.key} aria-current={item.key===selected.key?'page':undefined} onClick={()=>go(item.key)}>{item.label}<span aria-hidden="true">›</span></button>)}</nav><p>{surface==='staff'?'Your available tasks follow your assigned role.':'Your account, applications and support in one place.'}</p></aside>}
       <main id="mw-main" className="mw-main" tabIndex={-1}>
+        {!session && <div className="mw-page-heading"><h1>{workspaceLabel}</h1></div>}
         {notice&&<div className="mw-notice" role="status"><span>{notice}</span><button className="mw-dismiss" type="button" aria-label="Dismiss status message" onClick={()=>setNotice(null)}>×</button></div>}
         {pageError&&<div className="mw-error-banner" role="alert"><p>{pageError}</p><button type="button" className="mw-button mw-button-secondary" disabled={busy||refreshing} onClick={()=>void refresh()}>{refreshing?'Refreshing…':'Retry connection'}</button>{!session && <PortalAccountLinks surface={surface}/>}</div>}
         {!session&&!pageError&&<Loading label="Checking secure access…"/>}

@@ -48,8 +48,8 @@ function close(server) { return new Promise(resolveClose => { server.closeAllCon
 function actor(account) { return {subject:account.subject, displayName:'Synthetic '+account.role, role:account.role}; }
 let origin;
 
-async function context() {
-  const ctx = await browser.newContext({viewport:{width:1440,height:1000}, locale:'en-GB', timezoneId:'UTC', reducedMotion:'reduce', acceptDownloads:true});
+async function context(locale = 'en-GB') {
+  const ctx = await browser.newContext({viewport:{width:1440,height:1000}, locale, timezoneId:'UTC', reducedMotion:'reduce', acceptDownloads:true});
   await ctx.route('**/*', route => {
     if (new URL(route.request().url()).origin === origin) return route.continue();
     unexpectedRequests.push(new URL(route.request().url()).origin); return route.abort('blockedbyclient');
@@ -425,17 +425,37 @@ try {
   record('a completed mutation delivered after client expiry cannot restore private data or show a stale success');
   await expiryContext.close();
 
-  // Inject a real transport failure, then exercise the visible recovery control.
-  const outageContext=await context(), outagePage=await outageContext.newPage();
-  await outagePage.route('**/api/v1/session', route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:{code:'BACKEND_NOT_CONNECTED',message:'Synthetic temporary outage'}})}));
-  await outagePage.goto(origin+'/account/');
-  await outagePage.getByRole('button',{name:'Retry connection',exact:true}).waitFor();
-  assert.equal(await outagePage.getByRole('form',{name:'Customer sign-in',exact:true}).count(),0);
-  await outagePage.unroute('**/api/v1/session');
-  await outagePage.getByRole('button',{name:'Retry connection',exact:true}).click();
-  await outagePage.getByRole('form',{name:'Customer sign-in',exact:true}).waitFor();
-  record('an unavailable account service has a working retry and never invents a signed-in state');
-  await outageContext.close();
+  // An outage can be the first screen in either workspace. Keep its name inside main
+  // and reachable with the same keyboard path after the API becomes available.
+  for (const [surface, path, heading, locale] of [
+    ['Customer', '/account/', 'Your account workspace', 'en-GB'],
+    ['Customer', '/account/', 'Your account workspace', 'de-DE'],
+    ['Staff', '/internal/', 'Persistent operations records', 'en-GB'],
+    ['Staff', '/internal/', 'Persistent operations records', 'de-DE'],
+  ]) {
+    const outageContext = await context(locale);
+    const outagePage = await outageContext.newPage();
+    await outagePage.route('**/api/v1/session', route => route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:{code:'BACKEND_NOT_CONNECTED',message:'Synthetic temporary outage'}})}));
+    await outagePage.goto(origin + path);
+    const main = outagePage.getByRole('main');
+    await main.getByRole('heading', {name:heading, level:1, exact:true}).waitFor();
+    await main.getByRole('alert').getByText('Synthetic temporary outage', {exact:true}).waitFor();
+    const signIn = main.getByRole('form', {name:surface+' sign-in', exact:true});
+    assert.equal(await signIn.count(), 0);
+    await assertLayout(outagePage, surface.toLowerCase()+'-outage-'+locale);
+    await outagePage.getByRole('link', {name:'Skip to workspace content'}).focus();
+    await outagePage.keyboard.press('Enter');
+    assert.equal(await main.evaluate(element => element === document.activeElement), true);
+    await outagePage.keyboard.press('Tab');
+    const retry = main.getByRole('button', {name:'Retry connection', exact:true});
+    assert.equal(await retry.evaluate(element => element === document.activeElement && element.matches(':focus-visible')), true);
+    await outagePage.unroute('**/api/v1/session');
+    await outagePage.keyboard.press('Enter');
+    await signIn.waitFor();
+    assert.equal(await main.getByRole('heading', {level:1}).count(), 1);
+    await outageContext.close();
+  }
+  record('customer and staff outages name their workspaces, reflow and recover through keyboard Retry');
 
   // Clear the authenticated workspace through its actual sign-out control.
   await section(staffPage,'hardware','Sites & equipment');
