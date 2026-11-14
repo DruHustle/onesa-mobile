@@ -510,3 +510,30 @@ test("OIDC query encoding is kept separate from strict path validation", async (
   assert.equal(response.status, 503);
   assert.equal((await response.json()).error.code, "AUTH_NOT_CONFIGURED");
 });
+
+test("native bearer and web staff sessions share one scoped synthetic provider qualification", async () => {
+  const applicant = await login(await instance.auth.createLabUser({
+    username: "qualification-customer", displayName: "Qualification customer", role: "customer",
+  }), "bearer");
+  const post = (path: string, session: Session, body: unknown) => call(path, session, { method: "POST", body, key: randomUUID() });
+  const created = await post("/v1/applications", applicant, {
+    displayName: "Test applicant", area: "Pilot lab", planId: "reach", simFormat: "esim", deviceModel: "OM Test eSIM Handset 1", consentToPilot: true,
+  });
+  assert.equal(created.status, 201);
+  let application = await created.json();
+  const endpoint = "/v1/ops/applications/" + application.id;
+  const reviewed = await post(endpoint + "/review", admin, { revision: application.revision, decision: "ready_for_host", note: "Qualified for the fixture", registrationReference: "fixture-esim-01" });
+  assert.equal(reviewed.status, 200);
+  application = await reviewed.json();
+  assert.equal((await post(endpoint + "/qualification", applicant, { revision: application.revision, step: "submit" })).status, 403);
+  for (const step of ["submit", "approve"]) {
+    const response = await post(endpoint + "/qualification", admin, { revision: application.revision, step, ...(step === "approve" ? {sequence: 1} : {}) });
+    assert.equal(response.status, 200);
+    application = await response.json();
+  }
+  const own = await (await call("/v1/me", applicant)).json(), unrelated = await (await call("/v1/me", other)).json();
+  assert.equal(own.applications[0].qualification.state, "approved");
+  assert.equal(own.applications[0].networkState, "not_provisioned");
+  assert.equal(own.ledger.length, 0);
+  assert.equal(unrelated.applications.some((row: { id: string }) => row.id === application.id), false);
+});

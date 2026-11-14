@@ -626,7 +626,7 @@ export function createPlatformServer(config: PlatformConfig) {
       return;
     }
     const match =
-      /^\/v1\/(ops\/(assets|trials|evidence|applications|ledger)|support\/tickets)\/([a-f0-9-]{36})(?:\/(checks|results|review|refunds))?$/.exec(
+      /^\/v1\/(ops\/(assets|trials|evidence|applications|ledger)|support\/tickets)\/([a-f0-9-]{36})(?:\/(checks|results|review|refunds|qualification))?$/.exec(
         path,
       );
     if (match) {
@@ -666,6 +666,8 @@ export function createPlatformServer(config: PlatformConfig) {
         action === "review"
       )
         result = platform.reviewApplication(actor, id, await body(req), key);
+      else if (method === "POST" && resource === "applications" && action === "qualification")
+        result = platform.qualifyProvider(actor, id, await body(req), key);
       else if (
         method === "POST" &&
         resource === "ledger" &&

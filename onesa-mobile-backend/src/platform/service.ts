@@ -12,6 +12,7 @@ import {
   type Permission,
   type RecordItem,
 } from "./model.ts";
+import { applyQualificationStep, type Qualification } from "../contracts/qualification.ts";
 import { Store } from "./store.ts";
 
 export class Platform {
@@ -718,6 +719,8 @@ export class Platform {
       );
     return this.write(actor, key, "application.review:" + id, data, () => {
       const item = this.store.get("applications", id);
+      if (item.qualification)
+        throw new DomainError(409, "QUALIFICATION_REVIEW_LOCKED", "This reviewed application already has a provider qualification record.");
       if (item.state === "declined")
         throw new DomainError(
           409,
@@ -737,6 +740,24 @@ export class Platform {
         networkState: "not_provisioned",
       });
       this.store.audit(actor, "application.reviewed", id);
+      return result;
+    });
+  }
+  qualifyProvider(actor: Actor, id: string, input: unknown, key: string): RecordItem {
+    requirePermission(actor, "subscribers.review");
+    this.labOnly();
+    const data = parse(schemas.qualification, input);
+    return this.write(actor, key, "qualification.step:" + id, data, () => {
+      const item = this.store.get("applications", id);
+      if (item.mode !== "lab" || item.state !== "awaiting_host" || !item.registrationReference)
+        throw new DomainError(409, "HOST_REVIEW_REQUIRED", "Complete the pilot registration review before running the provider fixture.");
+      const previous = item.qualification as Qualification | undefined;
+      const next = applyQualificationStep(id, item.deviceModel, item.simFormat, previous, data.step, data.sequence);
+      if (next === previous) return item;
+      if (data.revision !== item.revision)
+        throw new DomainError(409, "REVISION_CONFLICT", "Refresh the application before updating its provider qualification.");
+      const result = this.store.update(item, data.revision, { qualification: next });
+      this.store.audit(actor, "qualification." + data.step, item.id);
       return result;
     });
   }

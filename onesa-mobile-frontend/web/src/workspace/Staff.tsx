@@ -88,7 +88,7 @@ export function Applications({data,context}:{data:StaffData;context:WorkspaceCon
       {visible.length?<div className="mw-record-list">{visible.map(item=><article className="mw-record" key={item.id}><div className="mw-record-line"><div><h3>{String(item.displayName)}</h3><p>{String(item.area)} · {planName(item.planId)} concept</p></div><Pill value={item.state}>{applicationState(item.state)[0]}</Pill></div><div className="mw-inline-facts"><span>{String(item.deviceModel)}</span><span>SIM preference: {item.simFormat==='esim'?'eSIM':'Physical SIM'}</span><span>Network: <strong>Not provisioned</strong></span></div>
         {Boolean(item.reviewNote)&&<Info>Customer-visible note: {String(item.reviewNote)}</Info>}
         <Details label={`Review ${String(item.displayName)} application`}>
-          {writable&&item.state!=='declined'?<RecordForm title={`Review application ${item.id}`} busy={context.pending} submitLabel="Save application review" fields={[
+          {writable&&item.state!=='declined'&&!item.qualification?<RecordForm title={`Review application ${item.id}`} busy={context.pending} submitLabel="Save application review" fields={[
             {name:'decision',label:'Decision',type:'select',options:[{value:'request_information',label:'Ask the customer for information'},{value:'ready_for_host',label:'Mark awaiting host operator'},{value:'decline',label:'Close this pilot application'}],wide:true},
             {name:'registrationReference',label:'Pilot registration-review reference',maxLength:160,required:false,wide:true,hint:'Required when marking awaiting host operator. Use a non-secret internal reference.'},
             {name:'note',label:'Explain the decision and next step to the customer',type:'textarea'},
@@ -98,6 +98,14 @@ export function Applications({data,context}:{data:StaffData;context:WorkspaceCon
           }}/>:<p className="mw-secondary">{item.state==='declined'?'This application is closed. The customer can submit a new pilot application.':'Your current role or workspace mode does not allow a pilot registration review.'}</p>}
           <RecordMeta item={item}/>
         </Details>
+        {writable && item.state === 'awaiting_host' && <Details label="Provider qualification fixture">
+          <p>Replay a proposed provider response using this pilot record. Every result is synthetic.</p>
+          {item.qualification && typeof item.qualification === 'object' && 'state' in item.qualification ? <p>Simulated status: <strong>{String(item.qualification.state)}</strong></p> : null}
+          <RecordForm title="Provider qualification fixture" busy={context.pending} submitLabel="Run fixture step" fields={[
+            {name:'step',label:'Fixture step',type:'select',options:[{value:'submit',label:'Submit test request'},{value:'timeout',label:'Simulate timeout'},{value:'approve',label:'Receive approval'},{value:'reject',label:'Receive rejection'},{value:'reconcile',label:'Reconcile confirmed approval'},{value:'cancel',label:'Cancel pending request'}]},
+            {name:'sequence',label:'Provider status revision',type:'number',required:false,hint:'Use a positive integer for approvals, rejections and reconciliation.'},
+          ]} onSubmit={v=>context.mutate(`/v1/ops/applications/${item.id}/qualification`,{revision:item.revision,step:v.step,...(v.sequence?{sequence:Number(v.sequence)}:{})},'POST','Simulated provider result saved.')}/>
+        </Details>}
       </article>)}</div>:<Empty>{search?'No applications match this search.':'No pilot applications are awaiting your review.'}</Empty>}
     </Panel>
   </div>;
