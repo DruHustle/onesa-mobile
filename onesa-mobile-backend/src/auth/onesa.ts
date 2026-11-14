@@ -1,3 +1,5 @@
+import type { DatabaseSync } from "node:sqlite";
+import { ManagedAccess } from "./managed-access.ts";
 import * as oidc from "openid-client";
 import { AuthError, isRole, isStaff, type AuthPrincipal, type OnesaConfig, type Surface } from "./types.ts";
 
@@ -40,8 +42,11 @@ export function validateOnesaAssertion(value: unknown, config: OnesaConfig, now:
 
 export function validateOnesaConfig(config: OnesaConfig, publicOrigin: string): void {
   const issuer = new URL(config.issuer), redirect = new URL(config.redirectUri);
+  const validIssuer = config.audience === undefined
+    ? issuer.pathname === "/api/v1/identity" && config.issuer === issuer.origin + issuer.pathname
+    : config.issuer === issuer.origin + "/" && config.audience === "https://api.mobile.onesa.eu";
   if (issuer.protocol !== "https:" || issuer.username || issuer.password || issuer.search || issuer.hash ||
-      issuer.pathname !== "/api/v1/identity" || config.issuer !== issuer.origin + issuer.pathname ||
+      !validIssuer ||
       !/^[A-Za-z0-9_-]{16,128}$/.test(config.clientId) || config.clientSecret.length < 48 || config.clientSecret.length > 256 ||
       redirect.protocol !== "https:" || redirect.origin !== publicOrigin || redirect.username || redirect.password || redirect.search || redirect.hash ||
       redirect.pathname !== "/api/v1/auth/onesa/callback") {
@@ -69,9 +74,19 @@ async function bounded(response: Response): Promise<Response> {
 export class OnesaIdentity {
   readonly config: OnesaConfig;
   private clientPromise: Promise<oidc.Configuration> | undefined;
-  constructor(config: OnesaConfig) { this.config = config; }
+  private readonly managed: ManagedAccess | undefined;
+  constructor(config: OnesaConfig, db?: DatabaseSync) {
+    this.config = config;
+    if(config.audience) {
+      if(!db) throw new Error("Managed Mobile access needs the product key cache.");
+      this.managed=new ManagedAccess(config,db,async()=>bounded(await fetch(config.issuer+".well-known/jwks.json",{redirect:"error",signal:AbortSignal.timeout(5000)})));
+    }
+  }
+  private endpoint(legacy:string,managed:string) {
+    return this.config.audience ? new URL(managed,this.config.issuer).href : this.config.issuer+legacy;
+  }
   private readonly safeFetch: oidc.CustomFetch = async (url, options) => {
-    const allowed = ["/.well-known/openid-configuration", "/token", "/jwks"].map((path) => this.config.issuer + path);
+    const allowed = [this.endpoint("/.well-known/openid-configuration",".well-known/openid-configuration"),this.endpoint("/token","oauth/token"),this.endpoint("/jwks",".well-known/jwks.json")];
     if (!allowed.includes(url)) throw new AuthError(503, "AUTH_PROVIDER_ENDPOINT");
     const { body, ...request } = options;
     return bounded(await fetch(url, { ...request, ...(body === undefined ? {} : { body }), redirect: "error", signal: options.signal ?? AbortSignal.timeout(5000) }));
@@ -87,9 +102,9 @@ export class OnesaIdentity {
       ).then((client) => {
         const metadata = client.serverMetadata();
         if (metadata.issuer !== this.config.issuer ||
-            metadata.authorization_endpoint !== this.config.issuer + "/auth" ||
-            metadata.token_endpoint !== this.config.issuer + "/token" ||
-            metadata.jwks_uri !== this.config.issuer + "/jwks" ||
+            metadata.authorization_endpoint !== this.endpoint("/auth","authorize") ||
+            metadata.token_endpoint !== this.endpoint("/token","oauth/token") ||
+            metadata.jwks_uri !== this.endpoint("/jwks",".well-known/jwks.json") ||
             !metadata.code_challenge_methods_supported?.includes("S256") ||
             !metadata.token_endpoint_auth_methods_supported?.includes("client_secret_basic") ||
             !metadata.id_token_signing_alg_values_supported?.includes("RS256")) {
@@ -108,13 +123,14 @@ export class OnesaIdentity {
     const parameters: Record<string, string> = {
       redirect_uri: this.config.redirectUri,
       response_type: "code",
-      scope: "openid email profile onesa",
+      scope: this.managed ? "openid profile" : "openid email profile onesa",
+      ...(this.config.audience ? {audience:this.config.audience}:{}),
       code_challenge: await oidc.calculatePKCECodeChallenge(input.verifier),
       code_challenge_method: "S256",
       state: input.state,
       nonce: input.nonce,
     };
-    if (input.surface === "staff") { parameters.acr_values = "urn:onesa:mfa"; parameters.max_age = "300"; }
+    if (input.surface === "staff") { parameters.acr_values = this.managed ? "http://schemas.openid.net/pape/policies/2007/06/multi-factor" : "urn:onesa:mfa"; parameters.max_age = "300"; }
     return oidc.buildAuthorizationUrl(client, parameters).href;
   }
   async exchange(input: { url: URL; state: string; nonce: string; verifier: string; surface: Surface }): Promise<{ accessToken: string; subject: string }> {
@@ -124,9 +140,10 @@ export class OnesaIdentity {
         idTokenExpected: true, ...(input.surface === "staff" ? { maxAge: 300 } : {}),
       });
       const claims = tokens.claims();
-      if (!tokens.access_token || tokens.access_token.length < 16 || tokens.access_token.length > 2048 ||
+      if (!tokens.access_token || tokens.access_token.length < 16 || tokens.access_token.length > (this.managed ? 16_384 : 2048) ||
           tokens.token_type.toLowerCase() !== "bearer" || !claims?.sub) throw new Error("Token response rejected.");
-      return { accessToken: tokens.access_token, subject: claims.sub };
+      const subject=this.managed ? (await this.managed.verify(tokens.access_token,claims.sub)).subject : claims.sub;
+      return { accessToken: tokens.access_token, subject };
     } catch {
       throw new AuthError(401, "AUTH_CALLBACK_REJECTED", "Onesa sign-in could not be completed. Start again.");
     }
@@ -147,6 +164,7 @@ export class OnesaIdentity {
     }
   }
   async inspect(token: string): Promise<AuthPrincipal | null> {
+    if(this.managed) return this.managed.verify(token);
     return validateOnesaAssertion(await this.request("/session", token), this.config, Math.floor(Date.now() / 1000));
   }
   async revoke(token: string): Promise<void> {

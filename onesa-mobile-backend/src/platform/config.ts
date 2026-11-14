@@ -9,6 +9,7 @@ export interface PlatformConfig extends ServerConfig {
   encryptionKey?: string;
   trustedProxyIps: readonly string[];
   onesa?: {
+    audience?: string;
     issuer: string;
     clientId: string;
     clientSecret: string;
@@ -53,6 +54,7 @@ export function loadPlatformConfig(
     env.ONESA_CLIENT_ID,
     env.ONESA_CLIENT_SECRET,
   ];
+  if (env.ONESA_MOBILE_API_AUDIENCE && !values.every(Boolean)) throw Error("Managed Mobile audience requires a configured Onesa client.");
   if (values.some(Boolean) && !values.every(Boolean))
     throw Error("Set all three ONESA identity values together.");
   let onesa: PlatformConfig["onesa"];
@@ -67,6 +69,7 @@ export function loadPlatformConfig(
     )
       throw Error("ONESA_ISSUER must be an HTTPS issuer URL.");
     onesa = {
+      ...(env.ONESA_MOBILE_API_AUDIENCE ? {audience:env.ONESA_MOBILE_API_AUDIENCE} : {}),
       issuer: env.ONESA_ISSUER!,
       clientId: env.ONESA_CLIENT_ID!,
       clientSecret: env.ONESA_CLIENT_SECRET!,
