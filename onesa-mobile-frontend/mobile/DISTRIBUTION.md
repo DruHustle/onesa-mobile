@@ -6,7 +6,7 @@ The website displays two platform entries in `onesa-mobile-frontend/web/src/app-
 
 The **Android preview APK** workflow compiles the release variant of `eu.onesa.mobile.preview` with its JavaScript inside the package. The APK supports ARM64 Android phones and 64-bit x86 Android devices. The build uses `EXPO_PUBLIC_API_BASE_URL=https://mobile.onesa.eu/api`. Service availability is separate from installing the app.
 
-On changes to the packager or workflow, CI signs this real release build with a disposable test certificate, verifies the application ID, version, embedded bundle, release manifest, APK signature, signer fingerprint and ZIP alignment, and rejects a mismatched fingerprint. A stock 64-bit Android emulator installs and cold-launches that same release package without Metro. The package and disposable key are discarded.
+On changes to the packager or workflow, CI signs the release variant with a disposable certificate, verifies the APK, installs it on a stock Android emulator and exercises account and guest entry. The pull-request job retains the exact installed APK for one day as a qualification artifact. Its certificate is disposable and its signature cannot update the owner's distributed application. The private key is discarded. Select this artifact for clean internal qualification installs. Owner-signed distribution uses the separate publication workflow below.
 
 For owner distribution, configure the `android-distribution` GitHub environment on this repository using the existing product signing identity. Use the owner's secure secret manager and GitHub Settings. Keep private materials out of Git and release assets.
 

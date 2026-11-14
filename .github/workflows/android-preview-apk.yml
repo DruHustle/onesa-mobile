@@ -99,6 +99,15 @@ jobs:
             sleep 8
             adb shell pidof "$APP_ID"
             python3 "$MOBILE/scripts/installed-account-access.py"
+      - name: Retain the installed qualification APK for release verification
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: onesa-mobile-android-qualification-64bit-${{ github.sha }}
+          path: ${{ runner.temp }}/disposable-qualification.apk
+          retention-days: 1
+          if-no-files-found: error
+          compression-level: 0
       - name: Remove the disposable signed package
         if: always()
         run: rm -f "$RUNNER_TEMP/disposable-qualification.apk"
