@@ -4,6 +4,7 @@ on:
     paths:
       - '.github/workflows/android-preview-apk.yml'
       - 'onesa-mobile-frontend/mobile/scripts/android-delivery.py'
+      - 'onesa-mobile-frontend/mobile/scripts/installed-account-access.py'
   workflow_dispatch:
     inputs:
       publish:
@@ -97,6 +98,7 @@ jobs:
             grep -F 'Status: ok' "$RUNNER_TEMP/launch.txt"
             sleep 8
             adb shell pidof "$APP_ID"
+            python3 "$MOBILE/scripts/installed-account-access.py"
       - name: Remove the disposable signed package
         if: always()
         run: rm -f "$RUNNER_TEMP/disposable-qualification.apk"
