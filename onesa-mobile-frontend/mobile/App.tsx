@@ -1225,6 +1225,9 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
                 {!canEdit ? (
                   <Card>
                     <DetailRow label="Status" value={!account ? "Refresh required" : human(application?.state)} />
+                    {application?.qualification && typeof application.qualification === "object" && "state" in application.qualification ? (
+                      <DetailRow label="Simulated provider status" value={human(application.qualification.state)} />
+                    ) : null}
                     <Text style={styles.body}>
                       {!account ? "Refresh your account to see its current application status." : "Contact support to request a change while the application is with the host review queue."}
                     </Text>

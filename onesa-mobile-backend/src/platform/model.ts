@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { qualificationSteps } from "../contracts/qualification.ts";
 
 export const roles = [
   "admin",
@@ -224,6 +225,11 @@ export const schemas = {
       consentToPilot: z.literal(true),
     })
     .strict(),
+  qualification: z.object({
+    revision,
+    step: z.enum(qualificationSteps),
+    sequence: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER).optional(),
+  }).strict(),
   review: z
     .object({
       revision,
