@@ -291,8 +291,8 @@ export default function WorkspaceApp({surface}:{surface:Surface}) {
 function Loading({label}:{label:string}) {return <div className="mw-loading" role="status"><span className="mw-loading-dot" aria-hidden="true"/><p>{label}</p></div>;}
 function PortalAccountLinks({surface}:{surface:Surface}) {
   return <span className="mw-secondary">
-    <a href="https://portal.onesa.eu/account">Sign in to Company Portal</a>
-    {surface === 'customer' && <> · <a href="https://portal.onesa.eu/account/register">Create an Onesa account</a></>}
+    <a href="https://portal.onesa.eu/admin">Sign in to Company Portal</a>
+    {surface === 'customer' && <> · <a href="https://portal.onesa.eu/admin?entry=register">Create an Onesa account</a></>}
   </span>;
 }
 

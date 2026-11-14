@@ -210,7 +210,7 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
   const [accountReads] = useState(() => new AccountReadTracker());
   const base = configuration.base;
   function openPortal(registration = false) {
-    const url = registration ? "https://portal.onesa.eu/account/register" : "https://portal.onesa.eu/account";
+    const url = registration ? "https://portal.onesa.eu/admin?entry=register" : "https://portal.onesa.eu/admin";
     void Linking.openURL(url).catch(() => setNotice("Open " + url + " in your browser."));
   }
   const resetPrivateState = useCallback(() => {
