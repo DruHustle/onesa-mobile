@@ -22,13 +22,26 @@ export function isSessionDiscovery(value: unknown, productionRequired = false): 
 /** Validate the account before it becomes an actionable or persisted snapshot. */
 export function isAccountSnapshot(value: unknown, subject: string): value is Account {
   const data = value as Account | null;
+  const validItem = (item: unknown): item is Item =>
+    !!item && typeof item === 'object' && !Array.isArray(item) &&
+    typeof (item as Item).id === 'string' &&
+    Number.isInteger((item as Item).revision) && (item as Item).revision > 0;
+  const activeApplicationValid = data?.activeApplication === undefined ||
+    data.activeApplication === null || validItem(data.activeApplication);
   return !!data && data.profile?.subject === subject &&
     typeof data.profile.displayName === 'string' &&
+    activeApplicationValid &&
     [data.applications, data.tickets, data.ledger, data.requests].every(rows =>
-      Array.isArray(rows) && rows.every(item => typeof item?.id === 'string' &&
-        Number.isInteger(item.revision) && item.revision > 0)) &&
+      Array.isArray(rows) && rows.every(validItem)) &&
     !!data.network && typeof data.network.state === 'string' &&
     !!data.status && ['lab', 'production'].includes(data.status.mode);
+}
+
+/** Prefer the server's owner-scoped full-history result over bounded pages. */
+export function activePilotApplication(account: Account | null): Item | undefined {
+  return account?.activeApplication ??
+    account?.applications.find(item => item.state !== 'declined') ??
+    account?.applications[0];
 }
 
 export function sessionRemainingMs(value: Credential | null, now = Date.now()): number {

@@ -47,7 +47,7 @@ import {
   type Credential,
   type Item,
 } from "./src/api";
-import { AccountReadTracker, canEditPilotApplication, isAccountSnapshot, isPublicAccountApi, isSessionDiscovery, launchInterestChange, sessionRemainingMs } from "./src/account-state";
+import { AccountReadTracker, activePilotApplication, canEditPilotApplication, isAccountSnapshot, isPublicAccountApi, isSessionDiscovery, launchInterestChange, sessionRemainingMs } from "./src/account-state";
 import {
   BrandMark,
   Button,
@@ -834,9 +834,7 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
           : previous,
       );
     });
-  const application =
-    account?.applications.find((a) => a.state !== "declined") ??
-    account?.applications[0];
+  const application = activePilotApplication(account);
   const beginCorrection = () => {
     if (!application) return;
     applicationDraftId.current = application.id;

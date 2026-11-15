@@ -49,6 +49,16 @@ test('an expired or malformed credential cannot remain active after a foreground
   assert.equal(sessionRemainingMs({...credential, user: {...credential.user, expiresAt: Number.NaN}}), 0);
 });
 
+test('the server-selected open application remains visible beyond the bounded native history page', () => {
+  const olderOpen = {id: 'older-open', revision: 7, createdAt: '2026-10-01T00:00:00Z', state: 'review_required'};
+  const newerDeclined = {id: 'newer-declined', revision: 1, createdAt: '2026-11-01T00:00:00Z', state: 'declined'};
+  const snapshot: Account = {...account, applications: [newerDeclined], activeApplication: olderOpen};
+  assert.equal(isAccountSnapshot(snapshot, credential.user.subject), true);
+  assert.equal(activePilotApplication(snapshot), olderOpen);
+  assert.equal(isAccountSnapshot({...snapshot, activeApplication: {...olderOpen, revision: 0}}, credential.user.subject), false);
+  assert.equal(activePilotApplication({...snapshot, activeApplication: null}), newerDeclined);
+});
+
 test('production and host-review states never offer a lab pilot application edit', () => {
   assert.equal(canEditPilotApplication(account, undefined, credential), true);
   assert.equal(canEditPilotApplication({...account, status: {...account.status, mode: 'production'}}, undefined, credential), false);
