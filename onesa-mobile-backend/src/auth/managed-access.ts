@@ -95,6 +95,7 @@ export class ManagedAccess {
     const now = Math.floor(Date.now() / 1000);
     if (token.length > 16_384)
       throw new AuthError(401, "AUTH_PROVIDER_ASSERTION");
+    // Freshness decisions use a post-refresh clock, not the request's start time.
     if (!this.cache || now - this.cache.updated >= 300) {
       await this.refresh(now);
       // A JWKS network wait must not extend the freshness window of staff MFA.
