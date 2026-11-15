@@ -82,6 +82,7 @@ export class Platform {
     };
   }
   me(actor: Actor): unknown {
+    const activeApplications = this.store.openApplications(actor.subject);
     const pages = Object.fromEntries(
       ["applications", "tickets", "ledger", "requests"].map((kind) => [
         kind,
@@ -91,7 +92,8 @@ export class Platform {
     return {
       profile: { subject: actor.subject, displayName: actor.displayName },
       launchInterest: this.store.list("launchInterests", actor.subject, 1)[0] ?? null,
-      activeApplication: this.store.openApplication(actor.subject),
+      activeApplications,
+      activeApplication: activeApplications[0] ?? null,
       ...Object.fromEntries(
         Object.entries(pages).map(([kind, page]) => [kind, page.items]),
       ),

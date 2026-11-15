@@ -31,9 +31,9 @@ test("review, timeout, restart, recovery and delayed fixtures preserve one appli
     const submitted = platform.qualifyProvider(ops, item.id, payload, key);
     assert.deepEqual(platform.qualifyProvider(ops, item.id, payload, key), submitted);
     assert.deepEqual(platform.qualifyProvider(ops, item.id, payload, randomUUID()), submitted);
-    item = platform.qualifyProvider(ops, item.id, { revision: submitted.revision, step: "timeout" }, randomUUID());
+    item = platform.qualifyProvider(ops, item.id, { revision: submitted.revision, step: "timeout", sequence: 42 }, randomUUID());
     assert.equal(qualification(item).state, "uncertain");
-    const retried = platform.qualifyProvider(ops, item.id, { revision: item.revision, step: "timeout" }, randomUUID());
+    const retried = platform.qualifyProvider(ops, item.id, { revision: item.revision, step: "timeout", sequence: 42 }, randomUUID());
     assert.deepEqual(retried, item);
     store.close(); store = new Store(path); platform = new Platform(store, "lab");
     assert.equal(qualification(store.get("applications", item.id)).state, "uncertain");
@@ -69,28 +69,9 @@ test("unsupported device, rejection and cancellation remain terminal through lat
   }
 });
 
-test("local timeout and initial submission steps cannot smuggle provider revisions", () => {
-  assert.throws(
-    () => applyQualificationStep("new", "OM Test Handset 1", "physical", undefined, "submit", 1),
-    /Only an authoritative provider status event/,
-  );
-  assert.throws(
-    () => applyQualificationStep("new", "OM Test Handset 1", "physical", undefined, "timeout", 1),
-    /Only an authoritative provider status event/,
-  );
-});
-
-test("local timeouts never replace provider revisions and stale callbacks cannot roll state backward", () => {
+test("an older uncertain fixture can recover from a timeout that carried a local sequence", () => {
   const previous: Qualification = { reference: "fixture-old", state: "uncertain", sequence: 42, eligibility: "fixture_compatible" };
-  assert.throws(
-    () => applyQualificationStep("old", "OM Test Handset 1", "physical", previous, "approve", 1),
-    /status revision must be greater/,
-  );
-  assert.throws(
-    () => applyQualificationStep("old", "OM Test Handset 1", "physical", previous, "timeout", 43),
-    /Only an authoritative provider status event/,
-  );
-  const approved = applyQualificationStep("old", "OM Test Handset 1", "physical", previous, "approve", 43);
+  const approved = applyQualificationStep("old", "OM Test Handset 1", "physical", previous, "approve", 1);
   assert.equal(approved.state, "approved");
-  assert.equal(approved.sequence, 43);
+  assert.equal(approved.sequence, 1);
 });

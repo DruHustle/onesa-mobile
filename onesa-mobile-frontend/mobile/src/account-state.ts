@@ -28,9 +28,11 @@ export function isAccountSnapshot(value: unknown, subject: string): value is Acc
     Number.isInteger((item as Item).revision) && (item as Item).revision > 0;
   const activeApplicationValid = data?.activeApplication === undefined ||
     data.activeApplication === null || validItem(data.activeApplication);
+  const activeApplicationsValid = data?.activeApplications === undefined ||
+    (Array.isArray(data.activeApplications) && data.activeApplications.every(validItem));
   return !!data && data.profile?.subject === subject &&
     typeof data.profile.displayName === 'string' &&
-    activeApplicationValid &&
+    activeApplicationValid && activeApplicationsValid &&
     [data.applications, data.tickets, data.ledger, data.requests].every(rows =>
       Array.isArray(rows) && rows.every(validItem)) &&
     !!data.network && typeof data.network.state === 'string' &&
@@ -38,11 +40,16 @@ export function isAccountSnapshot(value: unknown, subject: string): value is Acc
 }
 
 /** Prefer the server's owner-scoped full-history result over bounded pages. */
-// The recent-history list is intentionally bounded and cannot authoritatively determine whether an older application is still open.
+export function activePilotApplications(account: Account | null): Item[] {
+  if (!account) return [];
+  if (Array.isArray(account.activeApplications) && account.activeApplications.length)
+    return account.activeApplications;
+  if (account.activeApplication) return [account.activeApplication];
+  const recent = account.applications.filter(item => item.state !== 'declined');
+  return recent.length ? recent : account.applications.slice(0, 1);
+}
 export function activePilotApplication(account: Account | null): Item | undefined {
-  return account?.activeApplication ??
-    account?.applications.find(item => item.state !== 'declined') ??
-    account?.applications[0];
+  return activePilotApplications(account)[0];
 }
 
 export function sessionRemainingMs(value: Credential | null, now = Date.now()): number {

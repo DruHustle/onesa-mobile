@@ -531,19 +531,28 @@ test("a historical active pilot application blocks duplicates beyond the 200-row
     const active = store.insert("applications", customer.subject, {
       ...appInput, state: "review_required", mode: "lab", networkState: "not_provisioned",
     });
+    const olderActive = store.insert("applications", customer.subject, {
+      ...appInput, state: "information_required", mode: "lab", networkState: "not_provisioned",
+    });
     store.db.prepare("UPDATE platform_records SET created_at=? WHERE id=?")
       .run("2020-01-01T00:00:00.000Z", active.id);
+    store.db.prepare("UPDATE platform_records SET created_at=? WHERE id=?")
+      .run("2019-01-01T00:00:00.000Z", olderActive.id);
     for (let i = 0; i < 205; i++)
       store.insert("applications", customer.subject, { ...appInput, state: "declined", syntheticIndex: i });
     // Reproduces the old failure: a bounded UI/history list misses the active record.
     assert.equal(store.list("applications", customer.subject).some((item) => item.id === active.id), false);
-    assert.equal((p.me(customer) as { activeApplication: RecordItem | null }).activeApplication?.id, active.id);
+    const customerSnapshot = p.me(customer) as { activeApplication: RecordItem | null; activeApplications: RecordItem[] };
+    assert.equal(customerSnapshot.activeApplication?.id, active.id);
+    assert.deepEqual(customerSnapshot.activeApplications.map((item) => item.id), [active.id, olderActive.id]);
     const before = store.count("applications", customer.subject);
     assert.throws(() => p.apply(customer, appInput, randomUUID()), fault("APPLICATION_EXISTS"));
     assert.equal(store.count("applications", customer.subject), before);
     // The check is owner-scoped; a different customer may still submit a pilot request.
     assert.equal(p.apply(other, appInput, randomUUID()).owner, other.subject);
-    assert.equal((p.me(other) as { activeApplication: RecordItem | null }).activeApplication?.owner, other.subject);
+    const otherSnapshot = p.me(other) as { activeApplication: RecordItem | null; activeApplications: RecordItem[] };
+    assert.equal(otherSnapshot.activeApplication?.owner, other.subject);
+    assert.equal(otherSnapshot.activeApplications.length, 1);
   } finally {
     store.close();
   }

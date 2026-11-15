@@ -38,7 +38,7 @@ function LaunchInterestPreference({ data, context }: { data: CustomerData; conte
   </Panel>;
 }
 export function CustomerHome({ data, context, go }: { data:CustomerData;context:WorkspaceContext;go:(section:string)=>void }) {
-  const application=data.activeApplication ?? data.applications.find(a=>a.state!=='declined'),[state,next]=applicationState(application?.state);
+  const application=data.activeApplication ?? data.activeApplications?.[0] ?? data.applications.find(a=>a.state!=='declined'),[state,next]=applicationState(application?.state);
   const applicationsOpen=context.mode==='lab';
   const showLaunchInterest=data.status.capabilities?.launchInterest===true && data.launchInterest!==undefined;
   const openCases=data.tickets.filter(t=>t.status!=='resolved').length;
@@ -52,8 +52,8 @@ export function CustomerHome({ data, context, go }: { data:CustomerData;context:
   </div>;
 }
 export function CustomerApplication({ data, context }: {data:CustomerData;context:WorkspaceContext}) {
-  const applications=customerApplications(data.applications,data.activeApplication);
-  const current=data.activeApplication ?? data.applications.find(a=>a.state!=='declined'),canApply=context.mode==='lab'&&context.user.role==='customer';
+  const applications=customerApplications(data.applications,data.activeApplications ?? data.activeApplication);
+  const current=data.activeApplication ?? data.activeApplications?.[0] ?? data.applications.find(a=>a.state!=='declined'),canApply=context.mode==='lab'&&context.user.role==='customer';
   return <div className="mw-stack"><Info>Plan names are concepts. No approved price or allowance is offered here. Keep national ID documents, card details and SIM secrets out of these pilot forms.</Info>
     {applications.map((application: Item)=>{
       const [title,next]=applicationState(application.state),editable=['review_required','information_required'].includes(String(application.state));

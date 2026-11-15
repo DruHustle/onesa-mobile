@@ -80,13 +80,15 @@ test('obsolete download errors are discarded while current-session failures stil
   assert.deepEqual(errors,[expired]);
 });
 
-test('customer sees an old pending application even when 50 recent declined records fill the history page', () => {
+test('all older open applications remain visible when 50 recent declined records fill the history page', () => {
   const declined = Array.from({length:50}, (_,i) => ({ id:'declined-'+i, state:'declined' }));
   const pending = { id:'old-pending', state:'information_required' };
-  const visible = customerApplications(declined,pending);
-  assert.equal(visible[0],pending);
-  assert.equal(visible.length,51);
-  assert.equal(visible.find(item => item.state !== 'declined'),pending);
-  assert.equal(customerApplications([pending,...declined],pending).length,51);
+  const olderPending = { id:'older-open', state:'review_required' };
+  const active = [pending, olderPending];
+  const visible = customerApplications(declined,active);
+  assert.deepEqual(visible.slice(0,2),active);
+  assert.equal(visible.length,52);
+  assert.equal(visible.filter(item => item.state !== 'declined').length,2);
+  assert.equal(customerApplications([pending,...declined],active).length,52);
   assert.deepEqual(customerApplications(declined,null),declined);
 });

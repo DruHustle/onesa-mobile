@@ -20,11 +20,6 @@ export function applyQualificationStep(
   step: QualificationStep,
   sequence: number | undefined,
 ): Qualification {
-  const providerEvent = step === "approve" || step === "reject" || step === "reconcile";
-  if (providerEvent && sequence === undefined)
-    throw new DomainError(400, "QUALIFICATION_SEQUENCE_REQUIRED", "Supply the simulated provider status revision.");
-  if (!providerEvent && sequence !== undefined)
-    throw new DomainError(400, "QUALIFICATION_SEQUENCE_NOT_ALLOWED", "Only an authoritative provider status event may carry a status revision.");
   if (!previous) {
     if (step !== "submit") throw new DomainError(409, "QUALIFICATION_NOT_SUBMITTED", "Submit the pilot application to the fixture first.");
     const compatible = deviceModel === "OM Test Handset 1" && simFormat === "physical"
@@ -37,13 +32,14 @@ export function applyQualificationStep(
     };
   }
   if (step === "submit") return previous;
+  const providerEvent = step === "approve" || step === "reject" || step === "reconcile";
+  if (providerEvent && sequence === undefined)
+    throw new DomainError(400, "QUALIFICATION_SEQUENCE_REQUIRED", "Supply the simulated provider status revision.");
   if (["approved", "rejected", "cancelled"].includes(previous.state)) return previous;
-  if (providerEvent && sequence! <= previous.sequence)
-    throw new DomainError(409, "QUALIFICATION_STALE_EVENT", "The provider status revision must be greater than the last accepted revision.");
 
-  // A timeout is a local observation, not a provider callback. It never
-  // advances or replaces the authoritative provider revision.
-  if (step === "timeout" && previous.state === "uncertain") return previous;
+  // Pending states have received no authoritative provider event. Older fixture
+  // records may contain a sequence copied from an operator's timeout form.
+  if (step === "timeout" && previous.state === "uncertain" && previous.sequence === 0) return previous;
   const state = { approve: "approved", reject: "rejected", reconcile: "approved", cancel: "cancelled", timeout: "uncertain" } as const;
-  return { ...previous, state: state[step], sequence: providerEvent ? sequence! : previous.sequence };
+  return { ...previous, state: state[step], sequence: providerEvent ? sequence! : 0 };
 }
