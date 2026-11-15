@@ -566,6 +566,21 @@ test("support cases can be answered, reopened by their owner and resolved with a
     );
     assert.equal(ticket.status, "open");
     assert.equal((ticket.notes as unknown[]).length, 2);
+    assert.equal((ticket.notes as { authorRole: string }[])[1]?.authorRole, "customer");
+    // Staff-owned support cases are legitimate internal records. Their
+    // replies must never be falsely attributed to a customer.
+    const staffCase = p.ticket(
+      support,
+      { category: "sim", subject: "Internal pilot question", message: "Review the lab fixture" },
+      randomUUID(),
+    );
+    const staffReply = p.reply(
+      support,
+      staffCase.id,
+      { revision: staffCase.revision, message: "Reviewed the synthetic evidence" },
+      randomUUID(),
+    );
+    assert.equal((staffReply.notes as { authorRole: string }[])[0]?.authorRole, "support");
     const request = p.request(
       customer,
       { type: "sim_replacement", detail: "Pilot request" },

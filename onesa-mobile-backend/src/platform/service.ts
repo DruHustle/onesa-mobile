@@ -15,6 +15,9 @@ import {
 import { applyQualificationStep, type Qualification } from "../contracts/qualification.ts";
 import { Store } from "./store.ts";
 
+const mandatoryChecks = new Set(["asset_label", "power", "management_security", "equipment_approval"]);
+const equipmentWithOptionalChecks = new Set(["test_sim", "ups", "other"]);
+
 export class Platform {
   store: Store;
   mode: "lab" | "production";
@@ -390,24 +393,12 @@ export class Platform {
           "ASSET_NOT_RECEIVED",
           "Receive the asset before recording commissioning checks.",
         );
-      if (
-        data.result === "not_applicable" &&
-        [
-          "asset_label",
-          "power",
-          "management_security",
-          "equipment_approval",
-        ].includes(data.check)
-      )
-        throw new DomainError(
-          400,
-          "CHECK_REQUIRED",
-          "This check cannot be marked not applicable.",
-        );
       if (data.result === "not_applicable") {
-        if (!["test_sim", "ups", "other"].includes(String(item.assetType)))
+        if (mandatoryChecks.has(data.check))
+          throw new DomainError(400, "CHECK_REQUIRED", "This check cannot be marked not applicable.");
+        if (!equipmentWithOptionalChecks.has(String(item.assetType)))
           throw new DomainError(400, "CHECK_REQUIRED", "Firmware, connectivity and recovery must be checked for this equipment type.");
-        if (!data.note)
+        if (!data.note?.trim())
           throw new DomainError(400, "CHECK_REASON_REQUIRED", "Explain why this check does not apply to this exact item.");
       }
       const existingChecks = item.checks as Record<string, {result: string}>;
@@ -536,6 +527,23 @@ export class Platform {
           throw new DomainError(409, "TRIAL_CONFIGURATION_CHANGED", "The equipment configuration changed after planning. Plan a new trial for the current item and review its exact authorization scope.");
         if (item.path === "direct_to_cell" && !["android_phone", "iphone"].includes(String(asset.assetType)))
           throw new DomainError(409, "INVALID_CONNECTIVITY_PATH", "A passing direct-to-cell trial must identify the actual handset.");
+        // Commissioning completed after a field observation cannot be used to
+        // retroactively qualify that observation. Legacy records lacking a
+        // check timestamp must also fail closed until requalified.
+        const checks = asset.checks as Record<string, { result?: string; checkedAt?: string; note?: string }> | undefined;
+        const observedSecond = Math.floor(Date.parse(data.observedAt) / 1000);
+        for (const check of commissioningKeys) {
+          const record = checks?.[check];
+          const validExemption = record?.result === "not_applicable"
+            && !mandatoryChecks.has(check)
+            && equipmentWithOptionalChecks.has(String(asset.assetType))
+            && typeof record.note === "string" && record.note.trim().length > 0;
+          const checkedAt = typeof record?.checkedAt === "string" ? Date.parse(record.checkedAt) : NaN;
+          if ((record?.result !== "pass" && !validExemption) || !Number.isFinite(checkedAt))
+            throw new DomainError(409, "TRIAL_COMMISSIONING_INCOMPLETE", "Complete and document each applicable commissioning check before recording a passing field observation.");
+          if (Math.floor(checkedAt / 1000) > observedSecond)
+            throw new DomainError(409, "TRIAL_COMMISSIONING_AFTER_OBSERVATION", "All commissioning checks must precede a passing field observation. Plan and record a new authorized observation after requalification.");
+        }
         const required = item.path === "direct_to_cell"
           ? ["host_agreement", "equipment_approval", "satellite_authorization", "satellite_entitlement"]
           : ["host_agreement", "equipment_approval"];
@@ -854,7 +862,9 @@ export class Platform {
         {
           text: data.message,
           at: new Date().toISOString(),
-          authorRole: "customer",
+          // Staff can own internal support cases too. Never record a staff
+          // message as a customer message in the case history.
+          authorRole: actor.role,
         },
       ];
       if (notes.length > 100)
