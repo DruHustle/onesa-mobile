@@ -191,6 +191,32 @@ test("simulated passes and blocked field notes remain distinct from reviewed aut
   } finally { store.close(); }
 });
 
+test("field passes cannot use commissioning checks recorded after the observation", () => {
+  const { store, p, site, asset } = fixture();
+  try {
+    // Model a trial planned three minutes ago, with its field observation one
+    // minute later, followed by commissioning only now. No clock sleeps or
+    // live equipment are involved; only the persisted plan date is adjusted.
+    const received = p.updateAsset(ops, asset.id, { revision: asset.revision, state: "received" }, randomUUID());
+    const trial = plan(p, site, received);
+    const observedAt = new Date(Date.now() - 120_000).toISOString();
+    store.db.prepare("UPDATE platform_records SET created_at=? WHERE kind='trials' AND id=?")
+      .run(new Date(Date.now() - 180_000).toISOString(), trial.id);
+    const commissioned = commission(p, received);
+    assert.equal(commissioned.state, "commissioned");
+    const entries = allEvidence(p);
+    assert.throws(
+      () => p.recordTrial(ops, trial.id, observation(trial, entries, { observedAt }), randomUUID()),
+      fault("TRIAL_COMMISSIONING_AFTER_OBSERVATION"),
+    );
+    // The same planned device, observed only after all commissioning checks,
+    // remains eligible for the existing scoped evidence review.
+    const valid = p.recordTrial(ops, trial.id, observation(trial, entries), randomUUID());
+    assert.equal(valid.state, "completed");
+    assert.equal(valid.networkActionExecuted, false);
+  } finally { store.close(); }
+});
+
 test("manual pass criteria and hardware configuration must precede and match the observation", () => {
   const { store, p, site, asset } = fixture();
   try {
