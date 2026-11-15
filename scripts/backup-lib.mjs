@@ -24,6 +24,7 @@ function checkMode(mode) {
   if (mode !== 'lab' && mode !== 'production') throw new RecoveryError('Specify --mode lab or --mode production.');
 }
 
+// Database and archive inputs must not alias another file through a hard link.
 async function regularFile(path, label, maxBytes = MAX_DATABASE_BYTES) {
   const info = await lstat(path);
   if (!info.isFile() || info.isSymbolicLink() || info.nlink !== 1 || info.size > maxBytes) {
