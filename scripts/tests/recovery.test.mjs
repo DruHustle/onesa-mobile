@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes, randomUUID } from 'node:crypto';
-import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
+import { chmod, link, lstat, mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -108,6 +108,11 @@ test('backup, key generation and restore refuse to overwrite files or follow key
   assert.throws(() => readKeyFile(linked));
   await chmod(f.keyPath, 0o644);
   assert.throws(() => readKeyFile(f.keyPath), /owner-only/);
+  await chmod(f.keyPath, 0o600);
+  const hardLinked = join(f.root, 'keys', 'hard-linked.key');
+  await link(f.keyPath, hardLinked);
+  assert.throws(() => readKeyFile(hardLinked), /single-link/);
+  assert.throws(() => readKeyFile(f.keyPath), /single-link/);
 });
 
 test('lab archives cannot be promoted to production and a lab database cannot create a production archive', async t => {

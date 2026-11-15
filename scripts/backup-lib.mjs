@@ -37,8 +37,8 @@ export function readKeyFile(path) {
   const fd = openSync(resolve(path), constants.O_RDONLY | constants.O_NOFOLLOW);
   try {
     const info = fstatSync(fd);
-    if (!info.isFile() || info.size > 256 || (info.mode & 0o077) !== 0) {
-      throw new RecoveryError('Key files must be regular files with owner-only permissions (chmod 600).');
+    if (!info.isFile() || info.nlink !== 1 || info.size > 256 || (info.mode & 0o077) !== 0) {
+      throw new RecoveryError('Key files must be regular, single-link files with owner-only permissions (chmod 600).');
     }
     const value = readFileSync(fd, 'utf8').trim();
     if (!/^[a-f0-9]{64}$/i.test(value)) throw new RecoveryError('Key files must contain exactly 64 hexadecimal characters.');
