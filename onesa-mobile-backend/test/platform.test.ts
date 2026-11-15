@@ -525,7 +525,8 @@ test("customer application ownership, correction and host-pending lifecycle", ()
     store.close();
   }
 });
-test("a historical active pilot application blocks duplicates beyond the 200-row display limit", () => {
+// Legacy duplicate active records can exist after older bounded-list checks; every one must remain visible and block new submissions.
+test("all historical active pilot applications remain visible and block duplicates beyond the 200-row display limit", () => {
   const { store, p } = fixture();
   try {
     const active = store.insert("applications", customer.subject, {
