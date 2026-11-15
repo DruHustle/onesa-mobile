@@ -834,6 +834,7 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
           : previous,
       );
     });
+  // The server resolves this across the full owner history; bounded pages may omit an older open application.
   const application = activePilotApplication(account);
   const beginCorrection = () => {
     if (!application) return;
