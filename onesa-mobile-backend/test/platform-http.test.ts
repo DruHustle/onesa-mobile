@@ -544,13 +544,14 @@ test("application review and provider qualification require fresh staff authenti
     note: "Fresh staff authentication",
   });
   assert.equal(reviewed.status, 200);
+  const reviewedRecord = await reviewed.json();
   const staleQualification = await post(endpoint + "/qualification", staleReviewer, {
-    revision: (await reviewed.json()).revision, step: "submit",
+    revision: reviewedRecord.revision, step: "submit",
   });
   assert.equal(staleQualification.status, 403);
   assert.equal((await staleQualification.json()).error.code, "REAUTHENTICATION_REQUIRED");
   const freshQualification = await post(endpoint + "/qualification", reviewer, {
-    revision: (await reviewed.json()).revision, step: "submit",
+    revision: reviewedRecord.revision, step: "submit",
   });
   assert.equal(freshQualification.status, 200);
 });
