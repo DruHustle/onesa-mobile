@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { AccountReadTracker, canEditPilotApplication, isAccountSnapshot, isPublicAccountApi, isSessionDiscovery, launchInterestChange, sessionRemainingMs } from './account-state.ts';
+import { AccountReadTracker, activePilotApplication, canEditPilotApplication, isAccountSnapshot, isPublicAccountApi, isSessionDiscovery, launchInterestChange, sessionRemainingMs } from './account-state.ts';
 import type { Account, Credential } from './api.ts';
 
 const credential: Credential = {token: 'x'.repeat(43), user: {subject: 'synthetic-customer', displayName: 'Test', role: 'customer', source: 'lab', expiresAt: 1000}};
