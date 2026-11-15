@@ -69,6 +69,10 @@ test("N/A requires a reason and cannot bypass checks on active network devices",
     let passive = p.createAsset(ops, { siteId: site.id, tag: "LAB-CABLE", assetType: "other", manufacturer: "Fixture", model: "Passive cable" }, randomUUID());
     passive = p.updateAsset(ops, passive.id, { revision: passive.revision, state: "received" }, randomUUID());
     assert.throws(() => p.commission(ops, passive.id, { revision: passive.revision, check: "firmware", result: "not_applicable", evidenceRef: "SYNTHETIC" }, randomUUID()), fault("CHECK_REASON_REQUIRED"));
+    // An all-whitespace waiver must not commission equipment or alter its audit state.
+    assert.throws(() => p.commission(ops, passive.id, { revision: passive.revision, check: "firmware", result: "not_applicable", evidenceRef: "SYNTHETIC", note: "  \t  " }, randomUUID()), fault("CHECK_REASON_REQUIRED"));
+    assert.equal(store.get("assets", passive.id).revision, passive.revision);
+    assert.equal((store.get("assets", passive.id).checks as Record<string, {result: string}>).firmware!.result, "not_run");
     const checked = p.commission(ops, passive.id, { revision: passive.revision, check: "firmware", result: "not_applicable", evidenceRef: "SYNTHETIC", note: "Passive cable has no software; inspected on bench." }, randomUUID());
     assert.equal((checked.checks as Record<string, {result: string}>).firmware!.result, "not_applicable");
   } finally { store.close(); }
