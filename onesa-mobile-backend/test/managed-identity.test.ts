@@ -202,14 +202,16 @@ test("managed Mobile checks its dedicated audience, stable subject, factor proof
     );
     // An access token can outlive the short MFA freshness window. Rechecking
     // it must not turn an old factor event into current staff authentication.
-    for (const staleOrInvalidFactor of [
-      now - 301,
-      now + 1,
+    for (const invalidClaims of [
+      { [scope + "mfa_time"]: now - 301 },
+      { [scope + "mfa_time"]: now + 1 },
+      // MFA evidence cannot postdate issuance of the access token.
+      { iat: now - 60, [scope + "mfa_time"]: now - 1 },
     ]) {
       await assert.rejects(
         service.verify(await access({
           [scope + "roles"]: ["support"],
-          [scope + "mfa_time"]: staleOrInvalidFactor,
+          ...invalidClaims,
         })),
         (e: unknown) => (e as { status: number }).status === 403,
       );
