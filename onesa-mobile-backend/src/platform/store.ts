@@ -87,14 +87,16 @@ export class Store {
             .all(kind, owner, limit);
     return (rows as unknown as Row[]).map((row) => this.decode(row));
   }
-  /** Enforce the one-active-pilot-application rule across the entire owner history.
-   * A bounded list (200 rows) is only for display and can hide an older active application. */
+  /** An older active application must remain visible and block duplicates even
+   * when it falls outside the bounded customer history page. */
+  openApplication(owner: string): RecordItem | null {
+    const row = this.db.prepare(
+      "SELECT * FROM platform_records WHERE kind='applications' AND owner=? AND COALESCE(json_extract(payload,'$.state'),'')<>'declined' ORDER BY created_at DESC,id DESC LIMIT 1",
+    ).get(owner) as Row | undefined;
+    return row ? this.decode(row) : null;
+  }
   hasOpenApplication(owner: string): boolean {
-    return Boolean(
-      this.db.prepare(
-        "SELECT 1 FROM platform_records WHERE kind='applications' AND owner=? AND COALESCE(json_extract(payload,'$.state'),'')<>'declined' LIMIT 1",
-      ).get(owner),
-    );
+    return this.openApplication(owner) !== null;
   }
   count(kind: Kind, owner?: string): number {
     const row =

@@ -1,7 +1,7 @@
 import type { CustomerData, Item, WorkspaceContext } from './types';
 import { DateText, Details, Empty, Info, Money, MutationButton, Notes, options, Panel, Pill, RecordForm, RecordMeta, type Field } from './components';
 import { pasofi } from '../pasofi';
-import { applicationState, humanize } from './helpers.mjs';
+import { applicationState, humanize, customerApplications } from './helpers.mjs';
 
 export const planOptions = [{value:'everyday',label:'Everyday — concept'}, {value:'reach',label:'Reach — concept'}, {value:'family-farm',label:'Family & Farm — concept'}];
 export const planName = (id: unknown) => planOptions.find(p=>p.value===id)?.label.replace(' — concept','') ?? 'Not selected';
@@ -38,7 +38,7 @@ function LaunchInterestPreference({ data, context }: { data: CustomerData; conte
   </Panel>;
 }
 export function CustomerHome({ data, context, go }: { data:CustomerData;context:WorkspaceContext;go:(section:string)=>void }) {
-  const application=data.applications.find(a=>a.state!=='declined'),[state,next]=applicationState(application?.state);
+  const application=data.activeApplication ?? data.applications.find(a=>a.state!=='declined'),[state,next]=applicationState(application?.state);
   const applicationsOpen=context.mode==='lab';
   const showLaunchInterest=data.status.capabilities?.launchInterest===true && data.launchInterest!==undefined;
   const openCases=data.tickets.filter(t=>t.status!=='resolved').length;
@@ -52,9 +52,10 @@ export function CustomerHome({ data, context, go }: { data:CustomerData;context:
   </div>;
 }
 export function CustomerApplication({ data, context }: {data:CustomerData;context:WorkspaceContext}) {
-  const current=data.applications.find(a=>a.state!=='declined'),canApply=context.mode==='lab'&&context.user.role==='customer';
+  const applications=customerApplications(data.applications,data.activeApplication);
+  const current=data.activeApplication ?? data.applications.find(a=>a.state!=='declined'),canApply=context.mode==='lab'&&context.user.role==='customer';
   return <div className="mw-stack"><Info>Plan names are concepts. No approved price or allowance is offered here. Keep national ID documents, card details and SIM secrets out of these pilot forms.</Info>
-    {data.applications.map(application=>{
+    {applications.map(application=>{
       const [title,next]=applicationState(application.state),editable=['review_required','information_required'].includes(String(application.state));
       return <Panel key={application.id} title={String(title)} hint={planName(application.planId)}><p>{String(next)}</p>
         <dl className="mw-definition-list"><div><dt>Participant</dt><dd>{String(application.displayName)}</dd></div><div><dt>Area</dt><dd>{String(application.area)}</dd></div><div><dt>Phone</dt><dd>{String(application.deviceModel)}</dd></div><div><dt>SIM preference</dt><dd>{application.simFormat==='esim'?'eSIM':'Physical SIM'}</dd></div><div><dt>Network</dt><dd>Not provisioned</dd></div></dl>

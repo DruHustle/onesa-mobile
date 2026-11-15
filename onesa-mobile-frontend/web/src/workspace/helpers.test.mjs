@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { usdMinor, makeRetryKeys, applicationState, stateTone, mergeRecordPage, createSessionDownloadScope } from './helpers.mjs';
+import { usdMinor, makeRetryKeys, applicationState, stateTone, mergeRecordPage, createSessionDownloadScope, customerApplications } from './helpers.mjs';
 
 test('money input uses exact minor units and rejects excess precision or ambiguous amounts', () => {
   assert.equal(usdMinor('12.34'), 1234);
@@ -78,4 +78,15 @@ test('obsolete download errors are discarded while current-session failures stil
   assert.deepEqual(errors,[]);
   await assert.rejects(scope.run(async()=>{throw expired;},()=>assert.fail('A failed download must not be delivered.'),error=>errors.push(error)),error=>error===expired);
   assert.deepEqual(errors,[expired]);
+});
+
+test('customer sees an old pending application even when 50 recent declined records fill the history page', () => {
+  const declined = Array.from({length:50}, (_,i) => ({ id:'declined-'+i, state:'declined' }));
+  const pending = { id:'old-pending', state:'information_required' };
+  const visible = customerApplications(declined,pending);
+  assert.equal(visible[0],pending);
+  assert.equal(visible.length,51);
+  assert.equal(visible.find(item => item.state !== 'declined'),pending);
+  assert.equal(customerApplications([pending,...declined],pending).length,51);
+  assert.deepEqual(customerApplications(declined,null),declined);
 });

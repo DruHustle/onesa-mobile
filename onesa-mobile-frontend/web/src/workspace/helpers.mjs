@@ -34,6 +34,12 @@ export function stateTone(value) {
   if (['review_required', 'information_required', 'awaiting_host', 'in_review', 'in_progress', 'open', 'received'].includes(value)) return 'pending';
   return 'neutral';
 }
+/** A pilot application stays actionable even when more recent declined history fills the first page. */
+export function customerApplications(items, active) {
+  return active && !items.some((item) => item.id === active.id)
+    ? [active, ...items]
+    : items;
+}
 export function humanize(value) {
   return String(value ?? 'Not recorded').replaceAll('_', ' ').replace(/^./, (s) => s.toUpperCase());
 }
