@@ -133,11 +133,16 @@ export class ManagedAccess {
       )
         throw new AuthError(401, "AUTH_PROVIDER_ASSERTION");
       const factor = p[namespace + "mfa_time"];
+      // Staff tokens are rechecked on every Mobile request. A validly signed
+      // token must not keep an old MFA event alive merely because its access
+      // token has not expired yet. The factor must also predate token issuance.
       const mfa =
         typeof factor === "number" &&
         Number.isSafeInteger(factor) &&
         factor > 0 &&
-        factor <= now;
+        factor <= p.iat! &&
+        now - factor >= 0 &&
+        now - factor <= 300;
       if (isStaff(roles[0]) && !mfa) throw new AuthError(403, "MFA_REQUIRED");
       return {
         subject: uid,
