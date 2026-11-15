@@ -92,7 +92,7 @@ export class ManagedAccess {
     token: string,
     expectedSubject?: string,
   ): Promise<AuthPrincipal> {
-    const now = Math.floor(Date.now() / 1000);
+    let now = Math.floor(Date.now() / 1000);
     if (token.length > 16_384)
       throw new AuthError(401, "AUTH_PROVIDER_ASSERTION");
     // Freshness decisions use a post-refresh clock, not the request's start time.
