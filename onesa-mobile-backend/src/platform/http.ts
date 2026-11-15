@@ -637,7 +637,9 @@ export function createPlatformServer(config: PlatformConfig) {
       if (
         method === "POST" &&
         ((resource === "evidence" && action === "review") ||
-          (resource === "ledger" && action === "refunds"))
+          (resource === "ledger" && action === "refunds") ||
+          (resource === "applications" &&
+            (action === "review" || action === "qualification")))
       )
         auth.requireFresh(session);
       if (method === "PATCH" && resource === "assets" && !action)
