@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { chmod, link, lstat, mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
@@ -92,6 +93,16 @@ test('wrong key, changed ciphertext and truncated archive fail before installing
   await assert.rejects(restoreBackup({ inputPath: truncated, databasePath: f.target, keyPath: f.keyPath, mode: 'lab' }), /authentication failed/);
   await assert.rejects(lstat(f.target), { code: 'ENOENT' });
   assert.deepEqual(await readdir(join(f.root, 'restored')), []);
+});
+
+test('recovery key reader rejects a FIFO immediately without waiting for a writer', async t => {
+  const f = await fixture(t);
+  const fifo = join(f.root, 'keys', 'blocked.key');
+  execFileSync('mkfifo', [fifo]);
+  assert.throws(
+    () => readKeyFile(fifo),
+    /Key files must be regular, single-link files with owner-only permissions/,
+  );
 });
 
 test('backup, key generation and restore refuse to overwrite files or follow key symlinks', async t => {
