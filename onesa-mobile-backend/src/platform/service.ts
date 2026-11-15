@@ -82,6 +82,7 @@ export class Platform {
     };
   }
   me(actor: Actor): unknown {
+    const activeApplications = this.store.openApplications(actor.subject);
     const pages = Object.fromEntries(
       ["applications", "tickets", "ledger", "requests"].map((kind) => [
         kind,
@@ -91,6 +92,8 @@ export class Platform {
     return {
       profile: { subject: actor.subject, displayName: actor.displayName },
       launchInterest: this.store.list("launchInterests", actor.subject, 1)[0] ?? null,
+      activeApplications,
+      activeApplication: activeApplications[0] ?? null,
       ...Object.fromEntries(
         Object.entries(pages).map(([kind, page]) => [kind, page.items]),
       ),
@@ -522,6 +525,8 @@ export class Platform {
         // a same-second observation is not rejected because the plan has milliseconds.
         if (Math.floor(Date.parse(data.observedAt) / 1000) < Math.floor(Date.parse(item.createdAt) / 1000))
           throw new DomainError(409, "TRIAL_PLAN_AFTER_OBSERVATION", "A passing manual observation must follow the plan and its agreed pass criteria. Retrospective notes can be recorded without claiming a passed planned test.");
+        if (item.plannedFor && data.observedAt.slice(0, 10) < String(item.plannedFor))
+          throw new DomainError(409, "TRIAL_BEFORE_SCHEDULED_DATE", "A passing manual observation cannot predate the scheduled trial date. Replan for the actual authorized test date.");
         const plannedAsset = item.plannedAsset as Record<string, unknown> | undefined;
         if (!plannedAsset || ["id", "assetType", "manufacturer", "model", "firmware", "serialReference", "typeApprovalRef"].some(field => (plannedAsset[field] ?? null) !== (asset[field] ?? null)))
           throw new DomainError(409, "TRIAL_CONFIGURATION_CHANGED", "The equipment configuration changed after planning. Plan a new trial for the current item and review its exact authorization scope.");
@@ -688,11 +693,7 @@ export class Platform {
       );
     const data = parse(schemas.application, input);
     return this.write(actor, key, "application.create", data, () => {
-      if (
-        this.store
-          .list("applications", actor.subject)
-          .some((a) => a.state !== "declined")
-      )
+      if (this.store.hasOpenApplication(actor.subject))
         throw new DomainError(
           409,
           "APPLICATION_EXISTS",

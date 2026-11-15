@@ -31,9 +31,9 @@ test("review, timeout, restart, recovery and delayed fixtures preserve one appli
     const submitted = platform.qualifyProvider(ops, item.id, payload, key);
     assert.deepEqual(platform.qualifyProvider(ops, item.id, payload, key), submitted);
     assert.deepEqual(platform.qualifyProvider(ops, item.id, payload, randomUUID()), submitted);
-    item = platform.qualifyProvider(ops, item.id, { revision: submitted.revision, step: "timeout", sequence: 42 }, randomUUID());
+    item = platform.qualifyProvider(ops, item.id, { revision: submitted.revision, step: "timeout" }, randomUUID());
     assert.equal(qualification(item).state, "uncertain");
-    const retried = platform.qualifyProvider(ops, item.id, { revision: item.revision, step: "timeout", sequence: 42 }, randomUUID());
+    const retried = platform.qualifyProvider(ops, item.id, { revision: item.revision, step: "timeout" }, randomUUID());
     assert.deepEqual(retried, item);
     store.close(); store = new Store(path); platform = new Platform(store, "lab");
     assert.equal(qualification(store.get("applications", item.id)).state, "uncertain");
@@ -67,6 +67,28 @@ test("unsupported device, rejection and cancellation remain terminal through lat
       assert.equal(store.count("ledger"), 0);
     } finally { store.close(); }
   }
+});
+
+test("local submit, timeout and cancellation reject provider status revisions", () => {
+  const initial = applyQualificationStep("local-sequence", "OM Test Handset 1", "physical", undefined, "submit", undefined);
+  for (const step of ["submit", "timeout", "cancel"] as const) {
+    assert.throws(
+      () => applyQualificationStep("local-sequence", "OM Test Handset 1", "physical", initial, step, 7),
+      (error: unknown) => error instanceof Error &&
+        "code" in error && error.code === "QUALIFICATION_SEQUENCE_UNEXPECTED",
+    );
+  }
+  const uncertain = applyQualificationStep("local-sequence", "OM Test Handset 1", "physical", initial, "timeout", undefined);
+  assert.equal(uncertain.state, "uncertain");
+  assert.equal(uncertain.sequence, 0);
+  assert.throws(
+    () => applyQualificationStep("local-sequence", "OM Test Handset 1", "physical", uncertain, "timeout", 8),
+    (error: unknown) => error instanceof Error &&
+      "code" in error && error.code === "QUALIFICATION_SEQUENCE_UNEXPECTED",
+  );
+  const cancelled = applyQualificationStep("local-sequence", "OM Test Handset 1", "physical", initial, "cancel", undefined);
+  assert.equal(cancelled.state, "cancelled");
+  assert.equal(cancelled.sequence, 0);
 });
 
 test("an older uncertain fixture can recover from a timeout that carried a local sequence", () => {

@@ -87,6 +87,20 @@ export class Store {
             .all(kind, owner, limit);
     return (rows as unknown as Row[]).map((row) => this.decode(row));
   }
+  /** Return every open application across the complete owner history. The bounded
+   * recent-history page is not authoritative for duplicate prevention or visibility. */
+  openApplications(owner: string): RecordItem[] {
+    const rows = this.db.prepare(
+      "SELECT * FROM platform_records WHERE kind='applications' AND owner=? AND COALESCE(json_extract(payload,'$.state'),'')<>'declined' ORDER BY created_at DESC,id DESC",
+    ).all(owner) as unknown as Row[];
+    return rows.map((row) => this.decode(row));
+  }
+  openApplication(owner: string): RecordItem | null {
+    return this.openApplications(owner)[0] ?? null;
+  }
+  hasOpenApplication(owner: string): boolean {
+    return this.openApplication(owner) !== null;
+  }
   count(kind: Kind, owner?: string): number {
     const row =
       owner === undefined

@@ -20,6 +20,11 @@ export function applyQualificationStep(
   step: QualificationStep,
   sequence: number | undefined,
 ): Qualification {
+  const providerEvent = step === "approve" || step === "reject" || step === "reconcile";
+  // Only authoritative provider events may carry a provider status revision.
+  // Local submit, timeout and cancellation must never manufacture one.
+  if (!providerEvent && sequence !== undefined)
+    throw new DomainError(400, "QUALIFICATION_SEQUENCE_UNEXPECTED", "Local qualification steps cannot include a provider status revision.");
   if (!previous) {
     if (step !== "submit") throw new DomainError(409, "QUALIFICATION_NOT_SUBMITTED", "Submit the pilot application to the fixture first.");
     const compatible = deviceModel === "OM Test Handset 1" && simFormat === "physical"
@@ -32,7 +37,6 @@ export function applyQualificationStep(
     };
   }
   if (step === "submit") return previous;
-  const providerEvent = step === "approve" || step === "reject" || step === "reconcile";
   if (providerEvent && sequence === undefined)
     throw new DomainError(400, "QUALIFICATION_SEQUENCE_REQUIRED", "Supply the simulated provider status revision.");
   if (["approved", "rejected", "cancelled"].includes(previous.state)) return previous;
