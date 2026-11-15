@@ -70,7 +70,10 @@ test("N/A requires a reason and cannot bypass checks on active network devices",
     passive = p.updateAsset(ops, passive.id, { revision: passive.revision, state: "received" }, randomUUID());
     assert.throws(() => p.commission(ops, passive.id, { revision: passive.revision, check: "firmware", result: "not_applicable", evidenceRef: "SYNTHETIC" }, randomUUID()), fault("CHECK_REASON_REQUIRED"));
     // An all-whitespace waiver must not commission equipment or alter its audit state.
-    assert.throws(() => p.commission(ops, passive.id, { revision: passive.revision, check: "firmware", result: "not_applicable", evidenceRef: "SYNTHETIC", note: "  \t  " }, randomUUID()), fault("CHECK_REASON_REQUIRED"));
+    const auditTail = store.db.prepare("SELECT sequence, hash FROM platform_audit ORDER BY sequence DESC LIMIT 1");
+    const previous = auditTail.get();
+    assert.throws(() => p.commission(ops, passive.id, { revision: passive.revision, check: "firmware", result: "not_applicable", evidenceRef: "SYNTHETIC", note: "  \t  " }, randomUUID()), fault("INVALID_INPUT"));
+    assert.deepEqual(auditTail.get(), previous);
     assert.equal(store.get("assets", passive.id).revision, passive.revision);
     assert.equal((store.get("assets", passive.id).checks as Record<string, {result: string}>).firmware!.result, "not_run");
     const checked = p.commission(ops, passive.id, { revision: passive.revision, check: "firmware", result: "not_applicable", evidenceRef: "SYNTHETIC", note: "Passive cable has no software; inspected on bench." }, randomUUID());
