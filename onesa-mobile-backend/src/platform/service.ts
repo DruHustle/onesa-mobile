@@ -854,7 +854,9 @@ export class Platform {
         {
           text: data.message,
           at: new Date().toISOString(),
-          authorRole: "customer",
+          // Staff can own internal support cases too. Never record a staff
+          // message as a customer message in the case history.
+          authorRole: actor.role,
         },
       ];
       if (notes.length > 100)
