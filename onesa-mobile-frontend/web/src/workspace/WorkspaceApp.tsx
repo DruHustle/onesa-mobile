@@ -226,8 +226,10 @@ export default function WorkspaceApp({surface}:{surface:Surface}) {
       setNotice(success);
       // Keep the same key until refresh succeeds. If the read fails, retrying
       // this form must recover the confirmed write rather than create a duplicate.
-      await releaseRetryKeyAfterRefresh(retryKeys.current,attempt.fingerprint,refresh);
-      operation.assertCurrent();return result;
+      const refreshed=await releaseRetryKeyAfterRefresh(retryKeys.current,attempt.fingerprint,refresh);
+      operation.assertCurrent();
+      if(!refreshed)throw new Error('The save succeeded, but the workspace could not refresh. Refresh the workspace, then retry this unchanged form to recover the saved record without a duplicate.');
+      return result;
     } catch(error) {
       if(!operation.isCurrent()||error instanceof StaleWorkspaceOperationError)throw new StaleWorkspaceOperationError();
       if(error instanceof ApiError&&error.status===401)expireSession();

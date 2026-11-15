@@ -92,6 +92,10 @@ test('a confirmed write keeps its idempotency key when the follow-up refresh fai
     /Synthetic refresh outage/,
   );
   assert.equal(keys.get('POST /support/tickets', input).key, first.key);
-  await releaseRetryKeyAfterRefresh(keys, first.fingerprint, async () => {});
+  // The actual workspace refresh reports ordinary network failures as false.
+  // It does not throw. This must not release the key or return success.
+  assert.equal(await releaseRetryKeyAfterRefresh(keys, first.fingerprint, async () => false), false);
+  assert.equal(keys.get('POST /support/tickets', input).key, first.key);
+  assert.equal(await releaseRetryKeyAfterRefresh(keys, first.fingerprint, async () => true), true);
   assert.notEqual(keys.get('POST /support/tickets', input).key, first.key);
 });

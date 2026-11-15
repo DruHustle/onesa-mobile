@@ -95,6 +95,9 @@ export function createSessionDownloadScope() {
 /** Release a retry key only after the post-write read confirms the workspace is current.
  * If that read fails, the same form submission must replay the original idempotent write. */
 export async function releaseRetryKeyAfterRefresh(keys, fingerprint, refresh) {
-  await refresh();
+  // Workspace refresh resolves false (rather than throwing) on most HTTP,
+  // validation and aborted-read failures. A resolved promise is not success.
+  if ((await refresh()) !== true) return false;
   keys.confirmed(fingerprint);
+  return true;
 }
