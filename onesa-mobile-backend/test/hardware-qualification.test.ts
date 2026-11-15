@@ -254,6 +254,29 @@ test("a legacy commissioning exemption must be valid for the check and recorded 
   } finally { store.close(); }
 });
 
+test("a passing field observation cannot predate the scheduled trial date", () => {
+  const { store, p, site, asset } = fixture();
+  try {
+    const current = commission(p, asset);
+    const plannedFor = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    const trial = p.createTrial(ops, {
+      siteId: site.id, assetId: current.id, path: "direct_to_cell", service: "sms",
+      scenario: "Scheduled-date boundary", operator: "Fixture operator",
+      deviceScope: scope, acceptanceCriteria: "Synthetic criterion fixed before the planned date.",
+      plannedFor,
+    }, randomUUID());
+    const entries = allEvidence(p);
+    const observedAt = new Date().toISOString();
+    assert.ok(observedAt.slice(0, 10) < plannedFor);
+    assert.throws(
+      () => p.recordTrial(ops, trial.id, observation(trial, entries, { observedAt }), randomUUID()),
+      fault("TRIAL_BEFORE_SCHEDULED_DATE"),
+    );
+    assert.equal(store.get("trials", trial.id).state, "planned");
+    assert.equal(store.verifyAudit(), true);
+  } finally { store.close(); }
+});
+
 test("manual pass criteria and hardware configuration must precede and match the observation", () => {
   const { store, p, site, asset } = fixture();
   try {

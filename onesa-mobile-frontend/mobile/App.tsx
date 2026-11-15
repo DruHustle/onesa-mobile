@@ -47,7 +47,7 @@ import {
   type Credential,
   type Item,
 } from "./src/api";
-import { AccountReadTracker, canEditPilotApplication, isAccountSnapshot, isPublicAccountApi, isSessionDiscovery, launchInterestChange, sessionRemainingMs } from "./src/account-state";
+import { AccountReadTracker, activePilotApplication, activePilotApplications, canEditPilotApplication, isAccountSnapshot, isPublicAccountApi, isSessionDiscovery, launchInterestChange, sessionRemainingMs } from "./src/account-state";
 import {
   BrandMark,
   Button,
@@ -834,9 +834,9 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
           : previous,
       );
     });
-  const application =
-    account?.applications.find((a) => a.state !== "declined") ??
-    account?.applications[0];
+  // The server resolves this across the full owner history; bounded pages may omit an older open application.
+  const applications = activePilotApplications(account);
+  const application = activePilotApplication(account);
   const beginCorrection = () => {
     if (!application) return;
     applicationDraftId.current = application.id;
@@ -1293,6 +1293,17 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
                     </Button>
                   </Card>
                 )}
+                {applications.length > 1 ? (
+                  <Card>
+                    <Text style={styles.body}>
+                      We found {applications.length} open pilot applications on this account. They remain separate records; contact the team to reconcile them before making another request.
+                    </Text>
+                    {applications.slice(1).map((item) => (
+                      <DetailRow key={item.id} label={"Additional application · " + item.id.slice(0, 8)} value={human(item.state)} />
+                    ))}
+                    <Button onPress={() => setTab("Help")}>Ask support to reconcile</Button>
+                  </Card>
+                ) : null}
               </>
             ) : null}
             {tab === "Help" ? (
