@@ -511,6 +511,50 @@ test("OIDC query encoding is kept separate from strict path validation", async (
   assert.equal((await response.json()).error.code, "AUTH_NOT_CONFIGURED");
 });
 
+test("application review and provider qualification require fresh staff authentication", async () => {
+  const applicant = await login(await instance.auth.createLabUser({
+    username: "freshness-customer", displayName: "Freshness customer", role: "customer",
+  }), "bearer");
+  const reviewer = await login(await instance.auth.createLabUser({
+    username: "freshness-reviewer", displayName: "Freshness reviewer", role: "operations",
+  }));
+  const staleReviewer = await login(await instance.auth.createLabUser({
+    username: "stale-reviewer", displayName: "Stale reviewer", role: "operations",
+  }));
+  instance.auth.store.db.prepare(
+    "UPDATE mobile_auth_sessions SET authenticated_at=? WHERE subject=?",
+  ).run(Math.floor(Date.now() / 1000) - 301, staleReviewer.subject);
+  const post = (path: string, session: Session, body: unknown) =>
+    call(path, session, { method: "POST", body, key: randomUUID() });
+  const created = await post("/v1/applications", applicant, {
+    displayName: "Freshness test applicant", area: "Pilot lab", planId: "reach",
+    simFormat: "esim", deviceModel: "OM Test eSIM Handset 1", consentToPilot: true,
+  });
+  assert.equal(created.status, 201);
+  const application = await created.json();
+  const endpoint = "/v1/ops/applications/" + application.id;
+  const staleReview = await post(endpoint + "/review", staleReviewer, {
+    revision: application.revision, decision: "ready_for_host",
+    note: "Must require a recent staff sign-in",
+  });
+  assert.equal(staleReview.status, 403);
+  assert.equal((await staleReview.json()).error.code, "REAUTHENTICATION_REQUIRED");
+  const reviewed = await post(endpoint + "/review", reviewer, {
+    revision: application.revision, decision: "ready_for_host",
+    note: "Fresh staff authentication",
+  });
+  assert.equal(reviewed.status, 200);
+  const staleQualification = await post(endpoint + "/qualification", staleReviewer, {
+    revision: (await reviewed.json()).revision, step: "submit",
+  });
+  assert.equal(staleQualification.status, 403);
+  assert.equal((await staleQualification.json()).error.code, "REAUTHENTICATION_REQUIRED");
+  const freshQualification = await post(endpoint + "/qualification", reviewer, {
+    revision: (await reviewed.json()).revision, step: "submit",
+  });
+  assert.equal(freshQualification.status, 200);
+});
+
 test("native bearer and web staff sessions share one scoped synthetic provider qualification", async () => {
   const applicant = await login(await instance.auth.createLabUser({
     username: "qualification-customer", displayName: "Qualification customer", role: "customer",
