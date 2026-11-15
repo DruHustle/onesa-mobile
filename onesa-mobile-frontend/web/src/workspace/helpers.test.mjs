@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { usdMinor, makeRetryKeys, applicationState, stateTone, mergeRecordPage, createSessionDownloadScope } from './helpers.mjs';
+import { usdMinor, makeRetryKeys, applicationState, stateTone, mergeRecordPage, createSessionDownloadScope, releaseRetryKeyAfterRefresh } from './helpers.mjs';
 
 test('money input uses exact minor units and rejects excess precision or ambiguous amounts', () => {
   assert.equal(usdMinor('12.34'), 1234);
@@ -78,4 +78,24 @@ test('obsolete download errors are discarded while current-session failures stil
   assert.deepEqual(errors,[]);
   await assert.rejects(scope.run(async()=>{throw expired;},()=>assert.fail('A failed download must not be delivered.'),error=>errors.push(error)),error=>error===expired);
   assert.deepEqual(errors,[expired]);
+});
+
+test('a confirmed write keeps its idempotency key when the follow-up refresh fails', async () => {
+  let count = 0;
+  const keys = makeRetryKeys(() => `request-${++count}`);
+  const input = { subject: 'Support case', message: 'Please help' };
+  const first = keys.get('POST /support/tickets', input);
+  await assert.rejects(
+    releaseRetryKeyAfterRefresh(keys, first.fingerprint, async () => {
+      throw new Error('Synthetic refresh outage');
+    }),
+    /Synthetic refresh outage/,
+  );
+  assert.equal(keys.get('POST /support/tickets', input).key, first.key);
+  // The actual workspace refresh reports ordinary network failures as false.
+  // It does not throw. This must not release the key or return success.
+  assert.equal(await releaseRetryKeyAfterRefresh(keys, first.fingerprint, async () => false), false);
+  assert.equal(keys.get('POST /support/tickets', input).key, first.key);
+  assert.equal(await releaseRetryKeyAfterRefresh(keys, first.fingerprint, async () => true), true);
+  assert.notEqual(keys.get('POST /support/tickets', input).key, first.key);
 });
