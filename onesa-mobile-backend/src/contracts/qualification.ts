@@ -1,8 +1,8 @@
-import { DomainError } from "../platform/model.ts";
+import { DomainError, type qualificationSteps } from "../platform/model.ts";
 
 // This is the proposed Onesa-side lifecycle for a synthetic provider replay.
 // Provider-specific credentials, event envelopes and ordering are still unconfirmed.
-export const qualificationSteps = ["submit", "timeout", "approve", "reject", "reconcile", "cancel"] as const;
+export { qualificationSteps } from "../platform/model.ts";
 export type QualificationStep = (typeof qualificationSteps)[number];
 export type QualificationState = "submitted" | "uncertain" | "approved" | "rejected" | "cancelled";
 export interface Qualification {
@@ -32,11 +32,14 @@ export function applyQualificationStep(
     };
   }
   if (step === "submit") return previous;
-  if (step === "approve" || step === "reject" || step === "reconcile") {
-    if (sequence === undefined) throw new DomainError(400, "QUALIFICATION_SEQUENCE_REQUIRED", "Supply the simulated provider status revision.");
-    if (sequence <= previous.sequence) return previous;
-  }
+  const providerEvent = step === "approve" || step === "reject" || step === "reconcile";
+  if (providerEvent && sequence === undefined)
+    throw new DomainError(400, "QUALIFICATION_SEQUENCE_REQUIRED", "Supply the simulated provider status revision.");
   if (["approved", "rejected", "cancelled"].includes(previous.state)) return previous;
+
+  // Pending states have received no authoritative provider event. Older fixture
+  // records may contain a sequence copied from an operator's timeout form.
+  if (step === "timeout" && previous.state === "uncertain" && previous.sequence === 0) return previous;
   const state = { approve: "approved", reject: "rejected", reconcile: "approved", cancel: "cancelled", timeout: "uncertain" } as const;
-  return { ...previous, state: state[step], sequence: sequence ?? previous.sequence };
+  return { ...previous, state: state[step], sequence: providerEvent ? sequence! : 0 };
 }
