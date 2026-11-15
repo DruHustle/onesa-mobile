@@ -1,4 +1,4 @@
-import { chmodSync, existsSync, readFileSync, writeFileSync, lstatSync } from "node:fs";
+import { constants as fsConstants, closeSync, existsSync, fchmodSync, fstatSync, openSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { randomBytes } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
@@ -32,17 +32,34 @@ function authenticationKey(config: AuthConfig, path: string): Buffer {
     return randomBytes(32);
   } else {
     const keyPath = path + ".authkey";
-    if (!existsSync(keyPath)) {
+    try {
       writeFileSync(keyPath, randomBytes(32).toString("hex") + "\n", { flag: "wx", mode: 0o600 });
+    } catch (error) {
+      // Another process may have created the key after startup checked the path.
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
     }
-    // Validate before chmod: a hard link would otherwise change another file's permissions.
-    const info = lstatSync(keyPath);
-    if (!info.isFile() || info.isSymbolicLink() || info.nlink !== 1)
-      throw new Error("Lab authentication key must be a regular file without symbolic or hard links.");
-    chmodSync(keyPath, 0o600);
-    const key = readFileSync(keyPath, "utf8").trim();
-    if (!/^[a-f0-9]{64}$/.test(key)) throw new Error("Lab authentication key is invalid.");
-    return Buffer.from(key, "hex");
+    // Open once with O_NOFOLLOW, then validate, chmod and read the same inode.
+    // A path-based lstat/chmod/read sequence can be raced by replacing the
+    // sidecar between checks and accidentally changing or reading another file.
+    let fd: number;
+    try {
+      fd = openSync(keyPath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ELOOP")
+        throw new Error("Lab authentication key must be a regular file without symbolic or hard links.");
+      throw error;
+    }
+    try {
+      const info = fstatSync(fd);
+      if (!info.isFile() || info.nlink !== 1)
+        throw new Error("Lab authentication key must be a regular file without symbolic or hard links.");
+      fchmodSync(fd, 0o600);
+      const key = readFileSync(fd, "utf8").trim();
+      if (!/^[a-f0-9]{64}$/.test(key)) throw new Error("Lab authentication key is invalid.");
+      return Buffer.from(key, "hex");
+    } finally {
+      closeSync(fd);
+    }
   }
 }
 
