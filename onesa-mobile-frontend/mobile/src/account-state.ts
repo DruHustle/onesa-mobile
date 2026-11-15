@@ -38,6 +38,7 @@ export function isAccountSnapshot(value: unknown, subject: string): value is Acc
 }
 
 /** Prefer the server's owner-scoped full-history result over bounded pages. */
+// The recent-history list is intentionally bounded and cannot authoritatively determine whether an older application is still open.
 export function activePilotApplication(account: Account | null): Item | undefined {
   return account?.activeApplication ??
     account?.applications.find(item => item.state !== 'declined') ??
