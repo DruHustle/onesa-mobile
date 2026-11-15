@@ -91,3 +91,10 @@ export function createSessionDownloadScope() {
     },
   };
 }
+
+/** Release a retry key only after the post-write read confirms the workspace is current.
+ * If that read fails, the same form submission must replay the original idempotent write. */
+export async function releaseRetryKeyAfterRefresh(keys, fingerprint, refresh) {
+  await refresh();
+  keys.confirmed(fingerprint);
+}

@@ -5,7 +5,7 @@ import { Brand, DateText, Info, Panel } from './components';
 import { CustomerAccount, CustomerApplication, CustomerHelp, CustomerHome, CustomerPayments } from './Customer';
 import { Hardware, Trials } from './Hardware';
 import { Applications, Audit, Billing, ReadinessWorkspace, StaffHome, Support } from './Staff';
-import { createSessionDownloadScope, humanize, makeRetryKeys, mergeRecordPage } from './helpers.mjs';
+import { createSessionDownloadScope, humanize, makeRetryKeys, mergeRecordPage, releaseRetryKeyAfterRefresh } from './helpers.mjs';
 import { createSessionOperationScope, StaleWorkspaceOperationError } from './session-operations.mjs';
 import type { Collection, CustomerData, Item, Session, StaffData, Surface, WorkspaceContext } from './types';
 import './workspace.css';
@@ -223,9 +223,11 @@ export default function WorkspaceApp({surface}:{surface:Surface}) {
       const result=await operation.wait(()=>api<Item>(path,{method,headers:{'Content-Type':'application/json','X-CSRF-Token':csrfToken,'Idempotency-Key':attempt.key},body:JSON.stringify(input),signal:operation.signal}));
       operation.assertCurrent();
       if(typeof result?.id!=='string')throw new ApiError(0,'RESPONSE_UNREADABLE','The save response could not be verified. Retry the same action to recover its result.');
-      retryKeys.current.confirmed(attempt.fingerprint);setNotice(success);
-      // The write is confirmed. A failed follow-up read must never re-submit it.
-      await refresh();operation.assertCurrent();return result;
+      setNotice(success);
+      // Keep the same key until refresh succeeds. If the read fails, retrying
+      // this form must recover the confirmed write rather than create a duplicate.
+      await releaseRetryKeyAfterRefresh(retryKeys.current,attempt.fingerprint,refresh);
+      operation.assertCurrent();return result;
     } catch(error) {
       if(!operation.isCurrent()||error instanceof StaleWorkspaceOperationError)throw new StaleWorkspaceOperationError();
       if(error instanceof ApiError&&error.status===401)expireSession();
