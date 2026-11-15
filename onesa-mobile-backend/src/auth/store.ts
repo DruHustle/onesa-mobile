@@ -35,6 +35,7 @@ function authenticationKey(config: AuthConfig, path: string): Buffer {
     if (!existsSync(keyPath)) {
       writeFileSync(keyPath, randomBytes(32).toString("hex") + "\n", { flag: "wx", mode: 0o600 });
     }
+    // Validate before chmod: a hard link would otherwise change another file's permissions.
     const info = lstatSync(keyPath);
     if (!info.isFile() || info.isSymbolicLink() || info.nlink !== 1)
       throw new Error("Lab authentication key must be a regular file without symbolic or hard links.");
