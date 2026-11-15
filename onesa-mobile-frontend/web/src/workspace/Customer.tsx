@@ -55,7 +55,7 @@ export function CustomerApplication({ data, context }: {data:CustomerData;contex
   const applications=customerApplications(data.applications,data.activeApplication);
   const current=data.activeApplication ?? data.applications.find(a=>a.state!=='declined'),canApply=context.mode==='lab'&&context.user.role==='customer';
   return <div className="mw-stack"><Info>Plan names are concepts. No approved price or allowance is offered here. Keep national ID documents, card details and SIM secrets out of these pilot forms.</Info>
-    {applications.map(application=>{
+    {applications.map((application: Item)=>{
       const [title,next]=applicationState(application.state),editable=['review_required','information_required'].includes(String(application.state));
       return <Panel key={application.id} title={String(title)} hint={planName(application.planId)}><p>{String(next)}</p>
         <dl className="mw-definition-list"><div><dt>Participant</dt><dd>{String(application.displayName)}</dd></div><div><dt>Area</dt><dd>{String(application.area)}</dd></div><div><dt>Phone</dt><dd>{String(application.deviceModel)}</dd></div><div><dt>SIM preference</dt><dd>{application.simFormat==='esim'?'eSIM':'Physical SIM'}</dd></div><div><dt>Network</dt><dd>Not provisioned</dd></div></dl>
