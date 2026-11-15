@@ -95,7 +95,11 @@ export class ManagedAccess {
     const now = Math.floor(Date.now() / 1000);
     if (token.length > 16_384)
       throw new AuthError(401, "AUTH_PROVIDER_ASSERTION");
-    if (!this.cache || now - this.cache.updated >= 300) await this.refresh(now);
+    if (!this.cache || now - this.cache.updated >= 300) {
+      await this.refresh(now);
+      // A JWKS network wait must not extend the freshness window of staff MFA.
+      now = Math.floor(Date.now() / 1000);
+    }
     const verify = async () => {
       const cached = this.cache;
       if (
@@ -121,6 +125,7 @@ export class ManagedAccess {
           !(await this.refresh(now))
         )
           throw error;
+        now = Math.floor(Date.now() / 1000);
         result = await verify();
       }
       const p = result.payload,

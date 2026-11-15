@@ -230,6 +230,33 @@ test("managed Mobile checks its dedicated audience, stable subject, factor proof
   }
 });
 
+test("a delayed JWKS refresh cannot make an expired staff MFA proof appear fresh", async () => {
+  const originalNow = Date.now;
+  const startedAt = originalNow();
+  const startedSeconds = Math.floor(startedAt / 1000);
+  const db = new DatabaseSync(":memory:");
+  try {
+    Date.now = () => startedAt;
+    const token = await access({
+      [scope + "roles"]: ["support"],
+      [scope + "mfa_time"]: startedSeconds - 299,
+    });
+    const service = new ManagedAccess(config, db, async () => {
+      // The initial check sees a 299-second-old proof; the provider response
+      // crosses the 300-second boundary before signature/claim validation.
+      Date.now = () => startedAt + 3_000;
+      return Response.json(jwks);
+    });
+    await assert.rejects(
+      service.verify(token),
+      (error: unknown) => (error as { status: number }).status === 403,
+    );
+  } finally {
+    Date.now = originalNow;
+    db.close();
+  }
+});
+
 test("empty, unusable and ambiguous JWKS refreshes never replace the last verified key cache", async () => {
   const token = await access();
   const invalidSets = [
