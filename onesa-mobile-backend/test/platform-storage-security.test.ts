@@ -140,6 +140,31 @@ test("non-file sidecars and a directory writable by other users are refused", ()
   } finally { f.cleanup(); }
 });
 
+test("lab authentication refuses symbolic and hard-linked key sidecars without changing the linked target", () => {
+  for (const type of ["symbolic", "hard"] as const) {
+    const f = fixture(), target = join(f.directory, "unrelated-key");
+    try {
+      writeFileSync(target, "ab".repeat(32) + "\\n", { mode: 0o644 });
+      if (type === "symbolic") symlinkSync(target, f.path + ".authkey");
+      else linkSync(target, f.path + ".authkey");
+      const before = readFileSync(target);
+      assert.throws(
+        () => new AuthStore({
+          mode: "lab",
+          databasePath: f.path,
+          publicOrigin: "http://localhost:5173",
+          allowedOrigins: ["http://localhost:5173"],
+        }),
+        /regular file without symbolic or hard links/,
+      );
+      assert.deepEqual(readFileSync(target), before);
+      assert.equal(permissions(target), 0o644);
+    } finally {
+      f.cleanup();
+    }
+  }
+});
+
 for (const order of ["auth-first", "platform-first", "legacy-hardening"] as const) {
   test(`separate readers preserve live WAL locks and durable records after ${order} preparation`, () => {
     const f = fixture();
