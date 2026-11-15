@@ -26,8 +26,8 @@ function checkMode(mode) {
 
 async function regularFile(path, label, maxBytes = MAX_DATABASE_BYTES) {
   const info = await lstat(path);
-  if (!info.isFile() || info.isSymbolicLink() || info.size > maxBytes) {
-    throw new RecoveryError(`${label} must be a regular, bounded file, not a symbolic link.`);
+  if (!info.isFile() || info.isSymbolicLink() || info.nlink !== 1 || info.size > maxBytes) {
+    throw new RecoveryError(`${label} must be a regular, single-link, bounded file, not a symbolic link.`);
   }
   return info;
 }

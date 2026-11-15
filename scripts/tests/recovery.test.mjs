@@ -99,6 +99,13 @@ test('backup, key generation and restore refuse to overwrite files or follow key
   await createBackup({ databasePath: f.database, outputPath: f.archive, keyPath: f.keyPath, mode: 'lab' });
   await assert.rejects(createBackup({ databasePath: f.database, outputPath: f.archive, keyPath: f.keyPath, mode: 'lab' }), /already exists/);
   await assert.rejects(createRecoveryKey(f.keyPath), { code: 'EEXIST' });
+  const linkedDatabase = join(f.root, 'live', 'linked.sqlite');
+  await link(f.database, linkedDatabase);
+  await assert.rejects(
+    createBackup({ databasePath: linkedDatabase, outputPath: join(f.root, 'backups', 'hard-linked.omb'), keyPath: f.keyPath, mode: 'lab' }),
+    /regular, single-link, bounded file/,
+  );
+  await assert.rejects(lstat(join(f.root, 'backups', 'hard-linked.omb')), { code: 'ENOENT' });
   await mkdir(join(f.root, 'restored'), { mode: 0o700 });
   await writeFile(f.target + '-wal', 'do not overwrite');
   await assert.rejects(restoreBackup({ inputPath: f.archive, databasePath: f.target, keyPath: f.keyPath, mode: 'lab' }), /already exists/);
