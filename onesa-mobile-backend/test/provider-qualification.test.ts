@@ -69,6 +69,17 @@ test("unsupported device, rejection and cancellation remain terminal through lat
   }
 });
 
+test("local timeout and initial submission steps cannot smuggle provider revisions", () => {
+  assert.throws(
+    () => applyQualificationStep("new", "OM Test Handset 1", "physical", undefined, "submit", 1),
+    /Only an authoritative provider status event/,
+  );
+  assert.throws(
+    () => applyQualificationStep("new", "OM Test Handset 1", "physical", undefined, "timeout", 1),
+    /Only an authoritative provider status event/,
+  );
+});
+
 test("local timeouts never replace provider revisions and stale callbacks cannot roll state backward", () => {
   const previous: Qualification = { reference: "fixture-old", state: "uncertain", sequence: 42, eligibility: "fixture_compatible" };
   assert.throws(
