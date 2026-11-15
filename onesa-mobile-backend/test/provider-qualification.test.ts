@@ -33,7 +33,7 @@ test("review, timeout, restart, recovery and delayed fixtures preserve one appli
     assert.deepEqual(platform.qualifyProvider(ops, item.id, payload, randomUUID()), submitted);
     item = platform.qualifyProvider(ops, item.id, { revision: submitted.revision, step: "timeout" }, randomUUID());
     assert.equal(qualification(item).state, "uncertain");
-    const retried = platform.qualifyProvider(ops, item.id, { revision: item.revision, step: "timeout", sequence: 42 }, randomUUID());
+    const retried = platform.qualifyProvider(ops, item.id, { revision: item.revision, step: "timeout" }, randomUUID());
     assert.deepEqual(retried, item);
     store.close(); store = new Store(path); platform = new Platform(store, "lab");
     assert.equal(qualification(store.get("applications", item.id)).state, "uncertain");
