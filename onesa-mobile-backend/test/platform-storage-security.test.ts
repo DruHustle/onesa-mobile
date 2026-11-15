@@ -182,7 +182,7 @@ test("lab authentication refuses symbolic and hard-linked key sidecars without t
   for (const type of ["symbolic", "hard"] as const) {
     const f = fixture(), target = join(f.directory, "unrelated-key");
     try {
-      writeFileSync(target, "ab".repeat(32) + "\\n", { mode: 0o644 });
+      writeFileSync(target, "ab".repeat(32) + "\n", { mode: 0o644 });
       if (type === "symbolic") symlinkSync(target, f.path + ".authkey");
       else linkSync(target, f.path + ".authkey");
       const before = readFileSync(target);
