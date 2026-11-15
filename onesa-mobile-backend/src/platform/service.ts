@@ -525,6 +525,19 @@ export class Platform {
         );
       let authorizationEvidence: Record<string, unknown>[] = [];
       if (data.result === "pass" && data.source === "manual_field_record") {
+        // Commissioning completed after a field observation cannot be used to
+        // retroactively qualify that observation. Legacy records lacking a
+        // check timestamp must also fail closed until requalified.
+        const checks = asset.checks as Record<string, { result?: string; checkedAt?: string }> | undefined;
+        const observedSecond = Math.floor(Date.parse(data.observedAt) / 1000);
+        if (commissioningKeys.some(check => {
+          const record = checks?.[check];
+          const checkedAt = typeof record?.checkedAt === "string" ? Date.parse(record.checkedAt) : NaN;
+          return !["pass", "not_applicable"].includes(String(record?.result))
+            || !Number.isFinite(checkedAt)
+            || Math.floor(checkedAt / 1000) > observedSecond;
+        }))
+          throw new DomainError(409, "TRIAL_COMMISSIONING_AFTER_OBSERVATION", "All commissioning checks must precede a passing field observation. Plan and record a new authorized observation after requalification.");
         if (!item.deviceScope || !item.acceptanceCriteria || !data.authorizationRef)
           throw new DomainError(409, "TRIAL_AUTHORIZATION_REQUIRED", "Plan an exact device scope and pass criteria, then reference the approved test plan before recording a passing manual observation. Replan older trials missing this scope.");
         // Operator forms record seconds. Compare at that declared precision so
