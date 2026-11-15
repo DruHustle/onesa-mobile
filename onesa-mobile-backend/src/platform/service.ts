@@ -525,6 +525,17 @@ export class Platform {
         );
       let authorizationEvidence: Record<string, unknown>[] = [];
       if (data.result === "pass" && data.source === "manual_field_record") {
+        if (!item.deviceScope || !item.acceptanceCriteria || !data.authorizationRef)
+          throw new DomainError(409, "TRIAL_AUTHORIZATION_REQUIRED", "Plan an exact device scope and pass criteria, then reference the approved test plan before recording a passing manual observation. Replan older trials missing this scope.");
+        // Operator forms record seconds. Compare at that declared precision so
+        // a same-second observation is not rejected because the plan has milliseconds.
+        if (Math.floor(Date.parse(data.observedAt) / 1000) < Math.floor(Date.parse(item.createdAt) / 1000))
+          throw new DomainError(409, "TRIAL_PLAN_AFTER_OBSERVATION", "A passing manual observation must follow the plan and its agreed pass criteria. Retrospective notes can be recorded without claiming a passed planned test.");
+        const plannedAsset = item.plannedAsset as Record<string, unknown> | undefined;
+        if (!plannedAsset || ["id", "assetType", "manufacturer", "model", "firmware", "serialReference", "typeApprovalRef"].some(field => (plannedAsset[field] ?? null) !== (asset[field] ?? null)))
+          throw new DomainError(409, "TRIAL_CONFIGURATION_CHANGED", "The equipment configuration changed after planning. Plan a new trial for the current item and review its exact authorization scope.");
+        if (item.path === "direct_to_cell" && !["android_phone", "iphone"].includes(String(asset.assetType)))
+          throw new DomainError(409, "INVALID_CONNECTIVITY_PATH", "A passing direct-to-cell trial must identify the actual handset.");
         // Commissioning completed after a field observation cannot be used to
         // retroactively qualify that observation. Legacy records lacking a
         // check timestamp must also fail closed until requalified.
@@ -538,17 +549,6 @@ export class Platform {
             || Math.floor(checkedAt / 1000) > observedSecond;
         }))
           throw new DomainError(409, "TRIAL_COMMISSIONING_AFTER_OBSERVATION", "All commissioning checks must precede a passing field observation. Plan and record a new authorized observation after requalification.");
-        if (!item.deviceScope || !item.acceptanceCriteria || !data.authorizationRef)
-          throw new DomainError(409, "TRIAL_AUTHORIZATION_REQUIRED", "Plan an exact device scope and pass criteria, then reference the approved test plan before recording a passing manual observation. Replan older trials missing this scope.");
-        // Operator forms record seconds. Compare at that declared precision so
-        // a same-second observation is not rejected because the plan has milliseconds.
-        if (Math.floor(Date.parse(data.observedAt) / 1000) < Math.floor(Date.parse(item.createdAt) / 1000))
-          throw new DomainError(409, "TRIAL_PLAN_AFTER_OBSERVATION", "A passing manual observation must follow the plan and its agreed pass criteria. Retrospective notes can be recorded without claiming a passed planned test.");
-        const plannedAsset = item.plannedAsset as Record<string, unknown> | undefined;
-        if (!plannedAsset || ["id", "assetType", "manufacturer", "model", "firmware", "serialReference", "typeApprovalRef"].some(field => (plannedAsset[field] ?? null) !== (asset[field] ?? null)))
-          throw new DomainError(409, "TRIAL_CONFIGURATION_CHANGED", "The equipment configuration changed after planning. Plan a new trial for the current item and review its exact authorization scope.");
-        if (item.path === "direct_to_cell" && !["android_phone", "iphone"].includes(String(asset.assetType)))
-          throw new DomainError(409, "INVALID_CONNECTIVITY_PATH", "A passing direct-to-cell trial must identify the actual handset.");
         const required = item.path === "direct_to_cell"
           ? ["host_agreement", "equipment_approval", "satellite_authorization", "satellite_entitlement"]
           : ["host_agreement", "equipment_approval"];
