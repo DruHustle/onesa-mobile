@@ -31,15 +31,19 @@ export function applyQualificationStep(
       sequence: 0,
     };
   }
-  if (step === "submit") return previous;
   const providerEvent = step === "approve" || step === "reject" || step === "reconcile";
   if (providerEvent && sequence === undefined)
     throw new DomainError(400, "QUALIFICATION_SEQUENCE_REQUIRED", "Supply the simulated provider status revision.");
+  if (!providerEvent && sequence !== undefined)
+    throw new DomainError(400, "QUALIFICATION_SEQUENCE_NOT_ALLOWED", "Only an authoritative provider status event may carry a status revision.");
+  if (step === "submit") return previous;
   if (["approved", "rejected", "cancelled"].includes(previous.state)) return previous;
+  if (providerEvent && sequence! <= previous.sequence)
+    throw new DomainError(409, "QUALIFICATION_STALE_EVENT", "The provider status revision must be greater than the last accepted revision.");
 
-  // Pending states have received no authoritative provider event. Older fixture
-  // records may contain a sequence copied from an operator's timeout form.
-  if (step === "timeout" && previous.state === "uncertain" && previous.sequence === 0) return previous;
+  // A timeout is a local observation, not a provider callback. It never
+  // advances or replaces the authoritative provider revision.
+  if (step === "timeout" && previous.state === "uncertain") return previous;
   const state = { approve: "approved", reject: "rejected", reconcile: "approved", cancel: "cancelled", timeout: "uncertain" } as const;
-  return { ...previous, state: state[step], sequence: providerEvent ? sequence! : 0 };
+  return { ...previous, state: state[step], sequence: providerEvent ? sequence! : previous.sequence };
 }
