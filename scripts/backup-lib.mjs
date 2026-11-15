@@ -36,6 +36,7 @@ async function regularFile(path, label, maxBytes = MAX_DATABASE_BYTES) {
 export function readKeyFile(path) {
   const fd = openSync(resolve(path), constants.O_RDONLY | constants.O_NOFOLLOW);
   try {
+    // Open with O_NOFOLLOW and reject aliases before trusting a recovery key.
     const info = fstatSync(fd);
     if (!info.isFile() || info.nlink !== 1 || info.size > 256 || (info.mode & 0o077) !== 0) {
       throw new RecoveryError('Key files must be regular, single-link files with owner-only permissions (chmod 600).');
