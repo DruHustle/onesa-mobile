@@ -49,16 +49,28 @@ export class ManagedAccess {
         if (!response.ok) return false;
         const data = (await response.json()) as JSONWebKeySet;
         if (!Array.isArray(data.keys) || data.keys.length > 64) return false;
-        const keys = {
-          keys: data.keys.filter(
-            (k) =>
-              k.kty === "RSA" &&
-              (!k.use || k.use === "sig") &&
-              (!k.alg || k.alg === "RS256") &&
-              typeof k.kid === "string" &&
-              !k.d,
-          ),
-        };
+        const filtered = data.keys.filter(
+          (k) =>
+            k.kty === "RSA" &&
+            (!k.use || k.use === "sig") &&
+            (!k.alg || k.alg === "RS256") &&
+            typeof k.kid === "string" &&
+            k.kid.length > 0 &&
+            k.kid.length <= 128 &&
+            typeof k.n === "string" &&
+            typeof k.e === "string" &&
+            (!k.key_ops || k.key_ops.includes("verify")) &&
+            ![k.d, k.p, k.q, k.dp, k.dq, k.qi, k.oth].some(
+              (value) => value !== undefined,
+            ),
+        );
+        const keyIds = filtered.map((key) => key.kid!);
+        // Never replace a working cache with an empty, malformed or ambiguous
+        // JWKS. A bad provider response must not turn a transient outage into
+        // a sign-in outage for every key already trusted by this issuer.
+        if (!filtered.length || new Set(keyIds).size !== keyIds.length)
+          return false;
+        const keys = { keys: filtered };
         this.db
           .prepare(
             "INSERT INTO mobile_provider_keys VALUES(?,?,?) ON CONFLICT(issuer) DO UPDATE SET jwks=excluded.jwks,updated=excluded.updated",

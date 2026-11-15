@@ -229,3 +229,36 @@ test("managed Mobile checks its dedicated audience, stable subject, factor proof
     db.close();
   }
 });
+
+test("empty, unusable and ambiguous JWKS refreshes never replace the last verified key cache", async () => {
+  const token = await access();
+  const invalidSets = [
+    { keys: [] },
+    { keys: [{ kty: "EC", kid: "unsupported" }] },
+    { keys: [{ ...jwks.keys[0], kid: "" }] },
+    { keys: [jwks.keys[0], { ...jwks.keys[0] }] },
+  ];
+  for (const invalid of invalidSets) {
+    const db = new DatabaseSync(":memory:");
+    try {
+      const initial = new ManagedAccess(config, db, async () =>
+        Response.json(jwks),
+      );
+      assert.equal((await initial.verify(token)).subject, uid);
+      // Simulate a cache old enough to require refresh without waiting.
+      db.prepare(
+        "UPDATE mobile_provider_keys SET updated=? WHERE issuer=?",
+      ).run(Math.floor(Date.now() / 1000) - 300, issuer);
+      const refreshed = new ManagedAccess(config, db, async () =>
+        Response.json(invalid),
+      );
+      assert.equal((await refreshed.verify(token)).subject, uid);
+      const row = db
+        .prepare("SELECT jwks FROM mobile_provider_keys WHERE issuer=?")
+        .get(issuer);
+      assert.equal(JSON.parse(String(row?.jwks)).keys[0].kid, "fixture");
+    } finally {
+      db.close();
+    }
+  }
+});
