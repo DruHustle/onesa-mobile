@@ -688,11 +688,7 @@ export class Platform {
       );
     const data = parse(schemas.application, input);
     return this.write(actor, key, "application.create", data, () => {
-      if (
-        this.store
-          .list("applications", actor.subject)
-          .some((a) => a.state !== "declined")
-      )
+      if (this.store.hasOpenApplication(actor.subject))
         throw new DomainError(
           409,
           "APPLICATION_EXISTS",

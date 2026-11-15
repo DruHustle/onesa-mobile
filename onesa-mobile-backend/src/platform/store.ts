@@ -87,6 +87,15 @@ export class Store {
             .all(kind, owner, limit);
     return (rows as unknown as Row[]).map((row) => this.decode(row));
   }
+  /** Enforce the one-active-pilot-application rule across the entire owner history.
+   * A bounded list (200 rows) is only for display and can hide an older active application. */
+  hasOpenApplication(owner: string): boolean {
+    return Boolean(
+      this.db.prepare(
+        "SELECT 1 FROM platform_records WHERE kind='applications' AND owner=? AND COALESCE(json_extract(payload,'$.state'),'')<>'declined' LIMIT 1",
+      ).get(owner),
+    );
+  }
   count(kind: Kind, owner?: string): number {
     const row =
       owner === undefined
