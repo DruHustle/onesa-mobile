@@ -35,7 +35,9 @@ function authenticationKey(config: AuthConfig, path: string): Buffer {
     if (!existsSync(keyPath)) {
       writeFileSync(keyPath, randomBytes(32).toString("hex") + "\n", { flag: "wx", mode: 0o600 });
     }
-    if (lstatSync(keyPath).isSymbolicLink()) throw new Error("Lab authentication key cannot be a symlink.");
+    const info = lstatSync(keyPath);
+    if (!info.isFile() || info.isSymbolicLink() || info.nlink !== 1)
+      throw new Error("Lab authentication key must be a regular file without symbolic or hard links.");
     chmodSync(keyPath, 0o600);
     const key = readFileSync(keyPath, "utf8").trim();
     if (!/^[a-f0-9]{64}$/.test(key)) throw new Error("Lab authentication key is invalid.");
