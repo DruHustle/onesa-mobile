@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { qualificationSteps } from "../contracts/qualification.ts";
+export const qualificationSteps = ["submit", "timeout", "approve", "reject", "reconcile", "cancel"] as const;
 
 export const roles = [
   "admin",

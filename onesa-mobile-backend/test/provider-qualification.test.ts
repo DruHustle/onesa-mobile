@@ -7,7 +7,7 @@ import test from "node:test";
 import { Platform } from "../src/platform/service.ts";
 import { Store } from "../src/platform/store.ts";
 import type { Actor, RecordItem } from "../src/platform/model.ts";
-import type { Qualification } from "../src/contracts/qualification.ts";
+import { applyQualificationStep, type Qualification } from "../src/contracts/qualification.ts";
 
 const customer: Actor = { subject: "fixture-subscriber", role: "customer", displayName: "Fixture customer" };
 const ops: Actor = { subject: "fixture-operator", role: "operations", displayName: "Fixture operator" };
@@ -31,8 +31,10 @@ test("review, timeout, restart, recovery and delayed fixtures preserve one appli
     const submitted = platform.qualifyProvider(ops, item.id, payload, key);
     assert.deepEqual(platform.qualifyProvider(ops, item.id, payload, key), submitted);
     assert.deepEqual(platform.qualifyProvider(ops, item.id, payload, randomUUID()), submitted);
-    item = platform.qualifyProvider(ops, item.id, { revision: submitted.revision, step: "timeout" }, randomUUID());
+    item = platform.qualifyProvider(ops, item.id, { revision: submitted.revision, step: "timeout", sequence: 42 }, randomUUID());
     assert.equal(qualification(item).state, "uncertain");
+    const retried = platform.qualifyProvider(ops, item.id, { revision: item.revision, step: "timeout", sequence: 42 }, randomUUID());
+    assert.deepEqual(retried, item);
     store.close(); store = new Store(path); platform = new Platform(store, "lab");
     assert.equal(qualification(store.get("applications", item.id)).state, "uncertain");
     assert.throws(() => platform.qualifyProvider(ops, item.id, { revision: item.revision, step: "approve" }, randomUUID()), /status revision/);
@@ -65,4 +67,11 @@ test("unsupported device, rejection and cancellation remain terminal through lat
       assert.equal(store.count("ledger"), 0);
     } finally { store.close(); }
   }
+});
+
+test("an older uncertain fixture can recover from a timeout that carried a local sequence", () => {
+  const previous: Qualification = { reference: "fixture-old", state: "uncertain", sequence: 42, eligibility: "fixture_compatible" };
+  const approved = applyQualificationStep("old", "OM Test Handset 1", "physical", previous, "approve", 1);
+  assert.equal(approved.state, "approved");
+  assert.equal(approved.sequence, 1);
 });
