@@ -165,6 +165,30 @@ test("lab authentication refuses symbolic and hard-linked key sidecars without c
   }
 });
 
+test("an existing valid authentication key is reused and re-hardened on restart", () => {
+  const f = fixture(), config = {
+    mode: "lab" as const,
+    databasePath: f.path,
+    publicOrigin: "http://localhost:5173",
+    allowedOrigins: ["http://localhost:5173"],
+  };
+  let first: AuthStore | undefined, second: AuthStore | undefined;
+  try {
+    first = new AuthStore(config);
+    const original = readFileSync(f.path + ".authkey");
+    first.close();
+    first = undefined;
+    chmodSync(f.path + ".authkey", 0o644);
+    second = new AuthStore(config);
+    assert.deepEqual(readFileSync(f.path + ".authkey"), original, "restart must not rotate the authentication key");
+    assert.equal(permissions(f.path + ".authkey"), 0o600, "restart must harden the existing key through its opened descriptor");
+  } finally {
+    second?.close();
+    first?.close();
+    f.cleanup();
+  }
+});
+
 for (const order of ["auth-first", "platform-first", "legacy-hardening"] as const) {
   test(`separate readers preserve live WAL locks and durable records after ${order} preparation`, () => {
     const f = fixture();
