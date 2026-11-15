@@ -20,6 +20,11 @@ export function applyQualificationStep(
   step: QualificationStep,
   sequence: number | undefined,
 ): Qualification {
+  const providerEvent = step === "approve" || step === "reject" || step === "reconcile";
+  if (providerEvent && sequence === undefined)
+    throw new DomainError(400, "QUALIFICATION_SEQUENCE_REQUIRED", "Supply the simulated provider status revision.");
+  if (!providerEvent && sequence !== undefined)
+    throw new DomainError(400, "QUALIFICATION_SEQUENCE_NOT_ALLOWED", "Only an authoritative provider status event may carry a status revision.");
   if (!previous) {
     if (step !== "submit") throw new DomainError(409, "QUALIFICATION_NOT_SUBMITTED", "Submit the pilot application to the fixture first.");
     const compatible = deviceModel === "OM Test Handset 1" && simFormat === "physical"
@@ -31,11 +36,6 @@ export function applyQualificationStep(
       sequence: 0,
     };
   }
-  const providerEvent = step === "approve" || step === "reject" || step === "reconcile";
-  if (providerEvent && sequence === undefined)
-    throw new DomainError(400, "QUALIFICATION_SEQUENCE_REQUIRED", "Supply the simulated provider status revision.");
-  if (!providerEvent && sequence !== undefined)
-    throw new DomainError(400, "QUALIFICATION_SEQUENCE_NOT_ALLOWED", "Only an authoritative provider status event may carry a status revision.");
   if (step === "submit") return previous;
   if (["approved", "rejected", "cancelled"].includes(previous.state)) return previous;
   if (providerEvent && sequence! <= previous.sequence)
