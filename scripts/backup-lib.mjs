@@ -35,7 +35,7 @@ async function regularFile(path, label, maxBytes = MAX_DATABASE_BYTES) {
 
 /** Secrets never appear in command arguments or console output. */
 export function readKeyFile(path) {
-  const fd = openSync(resolve(path), constants.O_RDONLY | constants.O_NOFOLLOW);
+  const fd = openSync(resolve(path), constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
   try {
     // Open with O_NOFOLLOW and reject aliases before trusting a recovery key.
     const info = fstatSync(fd);
