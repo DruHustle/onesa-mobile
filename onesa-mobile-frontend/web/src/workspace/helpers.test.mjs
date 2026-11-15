@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { usdMinor, makeRetryKeys, applicationState, stateTone, mergeRecordPage, createSessionDownloadScope, releaseRetryKeyAfterRefresh } from './helpers.mjs';
+import { usdMinor, makeRetryKeys, applicationState, stateTone, mergeRecordPage, createSessionDownloadScope, releaseRetryKeyAfterRefresh, customerApplications } from './helpers.mjs';
 
 test('money input uses exact minor units and rejects excess precision or ambiguous amounts', () => {
   assert.equal(usdMinor('12.34'), 1234);
@@ -98,4 +98,17 @@ test('a confirmed write keeps its idempotency key when the follow-up refresh fai
   assert.equal(keys.get('POST /support/tickets', input).key, first.key);
   assert.equal(await releaseRetryKeyAfterRefresh(keys, first.fingerprint, async () => true), true);
   assert.notEqual(keys.get('POST /support/tickets', input).key, first.key);
+});
+
+test('all older open applications remain visible when 50 recent declined records fill the history page', () => {
+  const declined = Array.from({length:50}, (_,i) => ({ id:'declined-'+i, state:'declined' }));
+  const pending = { id:'old-pending', state:'information_required' };
+  const olderPending = { id:'older-open', state:'review_required' };
+  const active = [pending, olderPending];
+  const visible = customerApplications(declined,active);
+  assert.deepEqual(visible.slice(0,2),active);
+  assert.equal(visible.length,52);
+  assert.equal(visible.filter(item => item.state !== 'declined').length,2);
+  assert.equal(customerApplications([pending,...declined],active).length,52);
+  assert.deepEqual(customerApplications(declined,null),declined);
 });

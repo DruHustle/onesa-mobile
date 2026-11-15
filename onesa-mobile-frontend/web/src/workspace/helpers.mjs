@@ -101,3 +101,11 @@ export async function releaseRetryKeyAfterRefresh(keys, fingerprint, refresh) {
   keys.confirmed(fingerprint);
   return true;
 }
+
+/** Every open pilot application stays visible even when declined history fills the bounded first page. */
+export function customerApplications(items, active) {
+  const activeItems = (Array.isArray(active) ? active : active ? [active] : [])
+    .filter((item) => item && typeof item.id === 'string');
+  const seen = new Set(activeItems.map((item) => item.id));
+  return [...activeItems, ...items.filter((item) => !seen.has(item.id))];
+}

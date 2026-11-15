@@ -511,6 +511,110 @@ test("OIDC query encoding is kept separate from strict path validation", async (
   assert.equal((await response.json()).error.code, "AUTH_NOT_CONFIGURED");
 });
 
+test("application review and provider qualification require fresh staff authentication", async () => {
+  const applicant = await login(await instance.auth.createLabUser({
+    username: "freshness-customer", displayName: "Freshness customer", role: "customer",
+  }), "bearer");
+  const reviewer = await login(await instance.auth.createLabUser({
+    username: "freshness-reviewer", displayName: "Freshness reviewer", role: "operations",
+  }));
+  const staleReviewer = await login(await instance.auth.createLabUser({
+    username: "stale-reviewer", displayName: "Stale reviewer", role: "operations",
+  }));
+  instance.auth.store.db.prepare(
+    "UPDATE mobile_auth_sessions SET authenticated_at=? WHERE subject=?",
+  ).run(Math.floor(Date.now() / 1000) - 301, staleReviewer.subject);
+  const post = (path: string, session: Session, body: unknown) =>
+    call(path, session, { method: "POST", body, key: randomUUID() });
+  const created = await post("/v1/applications", applicant, {
+    displayName: "Freshness test applicant", area: "Pilot lab", planId: "reach",
+    simFormat: "esim", deviceModel: "OM Test eSIM Handset 1", consentToPilot: true,
+  });
+  assert.equal(created.status, 201);
+  const application = await created.json();
+  const endpoint = "/v1/ops/applications/" + application.id;
+  const staleReview = await post(endpoint + "/review", staleReviewer, {
+    revision: application.revision, decision: "ready_for_host",
+    note: "Must require a recent staff sign-in",
+  });
+  assert.equal(staleReview.status, 403);
+  assert.equal((await staleReview.json()).error.code, "REAUTHENTICATION_REQUIRED");
+  const reviewed = await post(endpoint + "/review", reviewer, {
+    revision: application.revision, decision: "ready_for_host",
+    registrationReference: "PILOT-REG-FRESH-001",
+    note: "Fresh staff authentication",
+  });
+  assert.equal(reviewed.status, 200);
+  const reviewedRecord = await reviewed.json();
+  const staleQualification = await post(endpoint + "/qualification", staleReviewer, {
+    revision: reviewedRecord.revision, step: "submit",
+  });
+  assert.equal(staleQualification.status, 403);
+  assert.equal((await staleQualification.json()).error.code, "REAUTHENTICATION_REQUIRED");
+  const freshQualification = await post(endpoint + "/qualification", reviewer, {
+    revision: reviewedRecord.revision, step: "submit",
+  });
+  assert.equal(freshQualification.status, 200);
+});
+
+test("hardware commissioning and trial results require fresh staff authentication", async () => {
+  const freshOps = await login(await instance.auth.createLabUser({
+    username: "fresh-hardware-ops", displayName: "Fresh hardware operator", role: "operations",
+  }));
+  const staleOps = await login(await instance.auth.createLabUser({
+    username: "stale-hardware-ops", displayName: "Stale hardware operator", role: "operations",
+  }));
+  instance.auth.store.db.prepare(
+    "UPDATE mobile_auth_sessions SET authenticated_at=? WHERE subject=?",
+  ).run(Math.floor(Date.now() / 1000) - 301, staleOps.subject);
+  const post = (path: string, session: Session, body: unknown) =>
+    call(path, session, { method: "POST", body, key: randomUUID() });
+  const siteResponse = await post("/v1/ops/sites", freshOps, {
+    name: "Freshness bench", area: "Synthetic lab", purpose: "device_bench",
+  });
+  assert.equal(siteResponse.status, 201);
+  const site = await siteResponse.json();
+  const assetResponse = await post("/v1/ops/assets", freshOps, {
+    siteId: site.id, tag: "FRESHNESS-PHONE", assetType: "android_phone",
+    manufacturer: "Synthetic", model: "Test handset",
+  });
+  assert.equal(assetResponse.status, 201);
+  const asset = await assetResponse.json();
+  const received = await call("/v1/ops/assets/" + asset.id, freshOps, {
+    method: "PATCH", body: { revision: asset.revision, state: "received" }, key: randomUUID(),
+  });
+  assert.equal(received.status, 200);
+  const receivedAsset = await received.json();
+  const checkPath = "/v1/ops/assets/" + asset.id + "/checks";
+  const checkInput = {
+    revision: receivedAsset.revision, check: "power", result: "pass",
+    evidenceRef: "FRESHNESS-POWER-CHECK",
+  };
+  const staleCheck = await post(checkPath, staleOps, checkInput);
+  assert.equal(staleCheck.status, 403);
+  assert.equal((await staleCheck.json()).error.code, "REAUTHENTICATION_REQUIRED");
+  const freshCheck = await post(checkPath, freshOps, checkInput);
+  assert.equal(freshCheck.status, 200);
+
+  const trialResponse = await post("/v1/ops/trials", freshOps, {
+    siteId: site.id, assetId: asset.id, path: "terrestrial", service: "sms",
+    scenario: "Fresh staff authentication boundary", operator: "Synthetic operator",
+  });
+  assert.equal(trialResponse.status, 201);
+  const trial = await trialResponse.json();
+  const resultInput = {
+    revision: trial.revision, result: "blocked", evidenceRef: "FRESHNESS-BLOCKED-RESULT",
+    observation: "Synthetic blocked observation; no device or network operation occurred.",
+    observedAt: new Date().toISOString(), source: "manual_field_record",
+  };
+  const staleResult = await post("/v1/ops/trials/" + trial.id + "/results", staleOps, resultInput);
+  assert.equal(staleResult.status, 403);
+  assert.equal((await staleResult.json()).error.code, "REAUTHENTICATION_REQUIRED");
+  const freshResult = await post("/v1/ops/trials/" + trial.id + "/results", freshOps, resultInput);
+  assert.equal(freshResult.status, 200);
+  assert.equal((await freshResult.json()).state, "completed");
+});
+
 test("native bearer and web staff sessions share one scoped synthetic provider qualification", async () => {
   const applicant = await login(await instance.auth.createLabUser({
     username: "qualification-customer", displayName: "Qualification customer", role: "customer",

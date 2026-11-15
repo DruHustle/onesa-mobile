@@ -22,6 +22,10 @@ export interface Account {
     revision: number;
     updatedAt: string;
   } | null;
+  /** Owner-scoped open application across the complete persisted history. */
+  activeApplication?: Item | null;
+  /** All owner-scoped open applications, not just the newest one. */
+  activeApplications?: Item[];
   applications: Item[];
   tickets: Item[];
   ledger: Item[];
