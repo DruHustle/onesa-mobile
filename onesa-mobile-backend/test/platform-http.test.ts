@@ -556,6 +556,64 @@ test("application review and provider qualification require fresh staff authenti
   assert.equal(freshQualification.status, 200);
 });
 
+test("hardware commissioning and trial results require fresh staff authentication", async () => {
+  const freshOps = await login(await instance.auth.createLabUser({
+    username: "fresh-hardware-ops", displayName: "Fresh hardware operator", role: "operations",
+  }));
+  const staleOps = await login(await instance.auth.createLabUser({
+    username: "stale-hardware-ops", displayName: "Stale hardware operator", role: "operations",
+  }));
+  instance.auth.store.db.prepare(
+    "UPDATE mobile_auth_sessions SET authenticated_at=? WHERE subject=?",
+  ).run(Math.floor(Date.now() / 1000) - 301, staleOps.subject);
+  const post = (path: string, session: Session, body: unknown) =>
+    call(path, session, { method: "POST", body, key: randomUUID() });
+  const siteResponse = await post("/v1/ops/sites", freshOps, {
+    name: "Freshness bench", area: "Synthetic lab", purpose: "device_bench",
+  });
+  assert.equal(siteResponse.status, 201);
+  const site = await siteResponse.json();
+  const assetResponse = await post("/v1/ops/assets", freshOps, {
+    siteId: site.id, tag: "FRESHNESS-PHONE", assetType: "android_phone",
+    manufacturer: "Synthetic", model: "Test handset",
+  });
+  assert.equal(assetResponse.status, 201);
+  const asset = await assetResponse.json();
+  const received = await call("/v1/ops/assets/" + asset.id, freshOps, {
+    method: "PATCH", body: { revision: asset.revision, state: "received" }, key: randomUUID(),
+  });
+  assert.equal(received.status, 200);
+  const receivedAsset = await received.json();
+  const checkPath = "/v1/ops/assets/" + asset.id + "/checks";
+  const checkInput = {
+    revision: receivedAsset.revision, check: "power", result: "pass",
+    evidenceRef: "FRESHNESS-POWER-CHECK",
+  };
+  const staleCheck = await post(checkPath, staleOps, checkInput);
+  assert.equal(staleCheck.status, 403);
+  assert.equal((await staleCheck.json()).error.code, "REAUTHENTICATION_REQUIRED");
+  const freshCheck = await post(checkPath, freshOps, checkInput);
+  assert.equal(freshCheck.status, 200);
+
+  const trialResponse = await post("/v1/ops/trials", freshOps, {
+    siteId: site.id, assetId: asset.id, path: "terrestrial", service: "sms",
+    scenario: "Fresh staff authentication boundary", operator: "Synthetic operator",
+  });
+  assert.equal(trialResponse.status, 201);
+  const trial = await trialResponse.json();
+  const resultInput = {
+    revision: trial.revision, result: "blocked", evidenceRef: "FRESHNESS-BLOCKED-RESULT",
+    observation: "Synthetic blocked observation; no device or network operation occurred.",
+    observedAt: new Date().toISOString(), source: "manual_field_record",
+  };
+  const staleResult = await post("/v1/ops/trials/" + trial.id + "/results", staleOps, resultInput);
+  assert.equal(staleResult.status, 403);
+  assert.equal((await staleResult.json()).error.code, "REAUTHENTICATION_REQUIRED");
+  const freshResult = await post("/v1/ops/trials/" + trial.id + "/results", freshOps, resultInput);
+  assert.equal(freshResult.status, 200);
+  assert.equal((await freshResult.json()).state, "completed");
+});
+
 test("native bearer and web staff sessions share one scoped synthetic provider qualification", async () => {
   const applicant = await login(await instance.auth.createLabUser({
     username: "qualification-customer", displayName: "Qualification customer", role: "customer",
