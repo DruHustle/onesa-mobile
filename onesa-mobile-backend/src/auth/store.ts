@@ -32,33 +32,46 @@ function authenticationKey(config: AuthConfig, path: string): Buffer {
     return randomBytes(32);
   } else {
     const keyPath = path + ".authkey";
+    let anotherProcessCreating = false;
     try {
       writeFileSync(keyPath, randomBytes(32).toString("hex") + "\n", { flag: "wx", mode: 0o600 });
     } catch (error) {
       // Another process may have created the key after startup checked the path.
       if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      anotherProcessCreating = true;
     }
     // Open once with O_NOFOLLOW, then validate, chmod and read the same inode.
     // A path-based lstat/chmod/read sequence can be raced by replacing the
     // sidecar between checks and accidentally changing or reading another file.
-    let fd: number;
-    try {
-      fd = openSync(keyPath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK);
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ELOOP")
-        throw new Error("Lab authentication key must be a regular file without symbolic or hard links.");
-      throw error;
-    }
-    try {
-      const info = fstatSync(fd);
-      if (!info.isFile() || info.nlink !== 1)
-        throw new Error("Lab authentication key must be a regular file without symbolic or hard links.");
-      fchmodSync(fd, 0o600);
-      const key = readFileSync(fd, "utf8").trim();
-      if (!/^[a-f0-9]{64}$/.test(key)) throw new Error("Lab authentication key is invalid.");
-      return Buffer.from(key, "hex");
-    } finally {
-      closeSync(fd);
+    // O_EXCL publishes the directory entry before writeFileSync finishes. A
+    // concurrent starter can therefore observe a temporarily empty key after
+    // EEXIST. Reopen briefly only for malformed contents; link/type violations
+    // remain immediate hard failures and every attempt validates its own fd.
+    const retryCell = new Int32Array(new SharedArrayBuffer(4));
+    const retryUntil = anotherProcessCreating ? Date.now() + 1_000 : 0;
+    for (;;) {
+      let fd: number;
+      try {
+        fd = openSync(keyPath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "ELOOP")
+          throw new Error("Lab authentication key must be a regular file without symbolic or hard links.");
+        throw error;
+      }
+      let retry = false;
+      try {
+        const info = fstatSync(fd);
+        if (!info.isFile() || info.nlink !== 1)
+          throw new Error("Lab authentication key must be a regular file without symbolic or hard links.");
+        fchmodSync(fd, 0o600);
+        const key = readFileSync(fd, "utf8").trim();
+        if (/^[a-f0-9]{64}$/.test(key)) return Buffer.from(key, "hex");
+        retry = Date.now() < retryUntil;
+      } finally {
+        closeSync(fd);
+      }
+      if (!retry) throw new Error("Lab authentication key is invalid.");
+      Atomics.wait(retryCell, 0, 0, 10);
     }
   }
 }
