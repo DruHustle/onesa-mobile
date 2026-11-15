@@ -398,7 +398,7 @@ export class Platform {
           throw new DomainError(400, "CHECK_REQUIRED", "This check cannot be marked not applicable.");
         if (!equipmentWithOptionalChecks.has(String(item.assetType)))
           throw new DomainError(400, "CHECK_REQUIRED", "Firmware, connectivity and recovery must be checked for this equipment type.");
-        if (!data.note)
+        if (!data.note?.trim())
           throw new DomainError(400, "CHECK_REASON_REQUIRED", "Explain why this check does not apply to this exact item.");
       }
       const existingChecks = item.checks as Record<string, {result: string}>;
