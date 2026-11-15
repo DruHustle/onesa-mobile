@@ -217,6 +217,36 @@ test("field passes cannot use commissioning checks recorded after the observatio
   } finally { store.close(); }
 });
 
+test("a legacy commissioning exemption must be valid for the check and recorded equipment", () => {
+  const { store, p, site, asset } = fixture();
+  try {
+    const current = commission(p, asset);
+    const trial = plan(p, site, current);
+    const entries = allEvidence(p);
+    // Older records can contain exemptions that today's commissioning API rejects.
+    store.db.prepare("UPDATE platform_records SET payload=json_set(payload, '$.checks.firmware.result', 'not_applicable', '$.checks.firmware.note', 'Legacy waiver') WHERE id=?").run(current.id);
+    assert.throws(
+      () => p.recordTrial(ops, trial.id, observation(trial, entries), randomUUID()),
+      fault("TRIAL_COMMISSIONING_INCOMPLETE"),
+    );
+    assert.equal(store.get("trials", trial.id).state, "planned");
+
+    const passive = p.createAsset(ops, {siteId: site.id, tag: "LAB-PASSIVE", assetType: "other", manufacturer: "Fixture", model: "Passive device"}, randomUUID());
+    const ready = commission(p, passive);
+    const exempt = p.commission(ops, ready.id, {revision: ready.revision, check: "firmware", result: "not_applicable", evidenceRef: "SYNTHETIC", note: "Passive device has no firmware."}, randomUUID());
+    const passiveTrial = plan(p, site, exempt, "terrestrial");
+    const terrestrial = allEvidence(p, "terrestrial");
+    const sql = "UPDATE platform_records SET payload=json_set(payload, '$.checks.firmware.note', ?) WHERE id=?";
+    store.db.prepare(sql).run("  ", exempt.id);
+    assert.throws(
+      () => p.recordTrial(ops, passiveTrial.id, observation(passiveTrial, terrestrial), randomUUID()),
+      fault("TRIAL_COMMISSIONING_INCOMPLETE"),
+    );
+    store.db.prepare(sql).run("Passive device has no firmware.", exempt.id);
+    assert.equal(p.recordTrial(ops, passiveTrial.id, observation(passiveTrial, terrestrial), randomUUID()).state, "completed");
+  } finally { store.close(); }
+});
+
 test("manual pass criteria and hardware configuration must precede and match the observation", () => {
   const { store, p, site, asset } = fixture();
   try {
