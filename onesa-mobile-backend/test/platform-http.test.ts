@@ -541,6 +541,7 @@ test("application review and provider qualification require fresh staff authenti
   assert.equal((await staleReview.json()).error.code, "REAUTHENTICATION_REQUIRED");
   const reviewed = await post(endpoint + "/review", reviewer, {
     revision: application.revision, decision: "ready_for_host",
+    registrationReference: "PILOT-REG-FRESH-001",
     note: "Fresh staff authentication",
   });
   assert.equal(reviewed.status, 200);
