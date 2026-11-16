@@ -259,3 +259,28 @@ for (const order of ["auth-first", "platform-first", "legacy-hardening"] as cons
     } finally { auth?.close(); store?.close(); f.cleanup(); }
   });
 }
+
+test("lab authentication refuses symbolic and hard-linked key sidecars without touching the linked target", () => {
+  for (const type of ["symbolic", "hard"] as const) {
+    const f = fixture(), target = join(f.directory, "unrelated-key");
+    try {
+      writeFileSync(target, "ab".repeat(32) + "\n", { mode: 0o644 });
+      if (type === "symbolic") symlinkSync(target, f.path + ".authkey");
+      else linkSync(target, f.path + ".authkey");
+      const before = readFileSync(target);
+      assert.throws(
+        () => new AuthStore({
+          mode: "lab",
+          databasePath: f.path,
+          publicOrigin: "http://localhost:5173",
+          allowedOrigins: ["http://localhost:5173"],
+        }),
+        /regular file without symbolic or hard links/,
+      );
+      assert.deepEqual(readFileSync(target), before);
+      assert.equal(permissions(target), 0o644);
+    } finally {
+      f.cleanup();
+    }
+  }
+});

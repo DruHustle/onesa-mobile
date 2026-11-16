@@ -12,7 +12,7 @@ This product directory contains the Onesa Mobile hardware pilot and operations p
 
 Keep each package independently installable and buildable. Do not introduce shared frontend/backend runtime folders or cross-package source imports. Communicate through documented APIs. Use the same iOS target for iPhone and iPad.
 
-Canonical repository: `DruHustle/onesa-mobile`. GitHub workflows belong in this repository's root `.github/workflows/`. Keep Mobile independently buildable; the Company Portal owns the identity provider and its migrations in `DruHustle/onesa-company-portal`.
+Canonical repository: `DruHustle/onesa-mobile`. GitHub workflows belong in this repository's root `.github/workflows/`. Keep Mobile independently buildable. `DruHustle/onesa-identity` owns the managed sign-in integration, global accounts and migration tooling. Company Portal owns the legacy issuer during transition. Mobile owns its resource permissions, account records and product sessions.
 
 ## Product integrity
 

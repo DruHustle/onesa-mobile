@@ -22,6 +22,7 @@ export interface AuthIssue {
   readonly session: AuthSession;
 }
 export interface OnesaConfig {
+  readonly audience?: string;
   readonly issuer: string;
   readonly clientId: string;
   readonly clientSecret: string;

@@ -88,8 +88,8 @@ export class AuthService {
     this.cookieName = this.secure ? "__Host-onesa_mobile_session" : "onesa_mobile_lab_session";
     this.flowCookieName = this.secure ? "__Host-onesa_mobile_flow" : "onesa_mobile_lab_flow";
     this.allowedOrigins = new Set(origins);
-    this.identity = config.onesa ? new OnesaIdentity(config.onesa) : undefined;
     this.store = new AuthStore(config);
+    this.identity = config.onesa ? new OnesaIdentity(config.onesa, this.store.db) : undefined;
     this.dummyHash = hashPassword(randomToken());
   }
   close(): void { this.store.close(); }
@@ -265,6 +265,7 @@ export class AuthService {
     this.store.deleteSession(row.id);
     this.store.record(row.subject, "session.signed_out", "success");
     if (row.source === "onesa" && row.onesa_access_token && this.identity) {
+      if(this.config.onesa?.audience) return {centralRevocation:"not_applicable"};
       try { await this.identity.revoke(unseal(row.onesa_access_token, this.store.key)); return { centralRevocation: "confirmed" }; }
       catch { return { centralRevocation: "unavailable" }; }
     }
