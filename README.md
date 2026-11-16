@@ -27,7 +27,7 @@ The proposed commercial model is a **Light MVNO**, with a licensed host supplyin
 | Runtime and recovery | `infra/runtime/`, `scripts/` | Isolated lab Compose stack, production configuration candidate, authenticated encryption of backups and verified restore |
 | Reviews | `docs/reviews/` | Telecom, graphics, telecom UX, cybersecurity and principal engineering findings |
 
-Each package has its own dependencies and lockfile. Frontends communicate with the backend over HTTP; they do not import backend runtime code. Native iPhone and iPad share the iOS target. Workflows live in this repository's `.github/workflows/`. Portal identity-provider migration and regression checks belong to `DruHustle/onesa-company-portal`; Mobile keeps its own identity-client contract checks.
+Each package has its own dependencies and lockfile. Frontends communicate with the backend over HTTP; they do not import backend runtime code. Native iPhone and iPad share the iOS target. Workflows live in this repository's `.github/workflows/`. Portal identity-provider migration and regression checks belong to `DruHustle/onesa-portal`; Mobile keeps its own identity-client contract checks.
 
 ## Run the local pilot
 
