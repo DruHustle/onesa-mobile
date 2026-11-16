@@ -71,6 +71,6 @@ Customer privacy, hosting jurisdiction, retention, incident response, telecom au
 
 ## Technical sources
 
-- [Portal identity configuration and provider](../../onesa-company-portal/onesa-company-portal-backend/src/identity/config.ts) and [live session contract](../../onesa-company-portal/onesa-company-portal-backend/src/identity/routes.ts): the implemented source of issuer/client/claim behavior.
+- [Portal identity configuration and provider](https://github.com/DruHustle/onesa-portal/blob/main/onesa-company-portal-backend/src/identity/config.ts) and [live session contract](https://github.com/DruHustle/onesa-portal/blob/main/onesa-company-portal-backend/src/identity/routes.ts): the implemented source of issuer/client/claim behavior.
 - [OpenID client discovery](https://github.com/panva/openid-client/blob/main/docs/functions/discovery.md), [authorization code grant](https://github.com/panva/openid-client/blob/main/docs/functions/authorizationCodeGrant.md), and [signature validation](https://github.com/panva/openid-client/blob/main/docs/functions/enableNonRepudiationChecks.md): protocol client configuration used in the adapter.
 - [RFC 6238](https://www.rfc-editor.org/rfc/rfc6238.html): TOTP algorithm and replay/window considerations. The implementation is verified against the RFC SHA-1 vectors.
