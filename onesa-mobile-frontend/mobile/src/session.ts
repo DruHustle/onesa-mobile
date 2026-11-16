@@ -148,11 +148,15 @@ export class SessionStorage {
         await this.removeAll(clearFirst);
         operation.assertCurrent();
       }
+      let committed = false;
       try {
         await this.adapter.write(key, value);
+        committed = true;
       } finally {
-        // No later queued operation can have written this key yet.
-        if (!operation.isCurrent()) await this.removeAll([key]);
+        // Native secure stores can persist a value and still reject a write.
+        // Remove potentially partial credentials before the next queued
+        // identity is allowed to read or replace them.
+        if (!committed || !operation.isCurrent()) await this.removeAll([key]);
       }
       operation.assertCurrent();
     });

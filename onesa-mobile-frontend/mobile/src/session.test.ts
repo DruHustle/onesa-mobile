@@ -224,6 +224,43 @@ test("failed cleanup of a stale native write blocks later mounts until explicit 
   assert.equal(values.get("identity"), "new account token");
 });
 
+test("a failed native write that partially persists credentials is removed before the next identity reads", async () => {
+  const { values, adapter } = memoryStorage();
+  let removalFails = false;
+  const storage = new SessionStorage({
+    ...adapter,
+    async write(key, value) {
+      // A native module can save a value and still reject its promise.
+      values.set(key, value);
+      throw new Error("Native keychain write failed after persistence");
+    },
+    async remove(key) {
+      if (removalFails) throw new Error("Native keychain deletion unavailable");
+      values.delete(key);
+    },
+  });
+  const current = new SessionBoundary().capture();
+  await assert.rejects(
+    storage.write(current, "identity", "private account A token"),
+    /Native keychain write failed after persistence/,
+  );
+  assert.equal(values.has("identity"), false);
+  assert.deepEqual(await storage.read(current, ["identity"]), [null]);
+
+  removalFails = true;
+  await assert.rejects(
+    storage.write(current, "identity", "private account B token"),
+    StorageCleanupRequiredError,
+  );
+  assert.equal(values.get("identity"), "private account B token");
+  await assert.rejects(storage.read(current, ["identity"]), StorageCleanupRequiredError);
+  await assert.rejects(storage.write(current, "identity", "another token"), StorageCleanupRequiredError);
+
+  removalFails = false;
+  await storage.clear(["identity"]);
+  assert.deepEqual(await storage.read(current, ["identity"]), [null]);
+});
+
 test("a queued credential replacement invalidated before it runs never deletes or writes another identity", async () => {
   const boundary = new SessionBoundary(),
     { values, adapter } = memoryStorage();
