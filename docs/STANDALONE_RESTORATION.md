@@ -18,7 +18,7 @@ Mobile's workflow runs the web tests/build, backend types and HTTP contracts, na
 
 The restoration's hosted Android jobs encountered HTTP 504 responses while downloading Gradle and Kotlin, followed by the wrapper's 10-second read timeout. The wrapper now waits up to 60 seconds for network operations. The Android job retries recognized transient download failures at most twice using the same job cache; other build failures keep their nonzero exit status. Toolchain versions, application source and dependency lockfiles are unchanged. A successful native build is still required; a retry alone is not qualification.
 
-The former monorepo `portal_identity` job exercised Portal's migration 015 and identity-provider tests. That source and check belong in `DruHustle/onesa-company-portal`; they must be retained there when Portal is restored. Mobile continues to test its OIDC client, recovery and grant checks locally. No live identity client or backend is commissioned by moving source.
+The former monorepo `portal_identity` job exercised Portal's migration 015 and identity-provider tests. That source and check belong in `DruHustle/onesa-portal`; they must be retained there when Portal is restored. Mobile continues to test its OIDC client, recovery and grant checks locally. No live identity client or backend is commissioned by moving source.
 
 ## Existing Vercel project
 
