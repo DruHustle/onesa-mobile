@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
+import { once } from "node:events";
 import {
   chmodSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync,
   rmSync, statSync, symlinkSync, writeFileSync,
@@ -162,6 +163,62 @@ test("lab authentication refuses symbolic and hard-linked key sidecars without c
     } finally {
       f.cleanup();
     }
+  }
+});
+
+test("a concurrent first-start reader waits for the creator to finish writing the auth key", async () => {
+  const f = fixture(), config = {
+    mode: "lab" as const,
+    databasePath: f.path,
+    publicOrigin: "http://localhost:5173",
+    allowedOrigins: ["http://localhost:5173"],
+  };
+  const keyPath = f.path + ".authkey";
+  const expected = "cd".repeat(32);
+  // Reproduce the publication window: O_EXCL has created the path, but the
+  // first process has not yet completed its write when the second gets EEXIST.
+  writeFileSync(keyPath, "", { mode: 0o600 });
+  const writer = spawn(process.execPath, ["--input-type=module", "-e", `
+    import { writeFileSync } from "node:fs";
+    const [path, key] = process.argv.slice(1);
+    process.stdout.write("ready\\n");
+    setTimeout(() => writeFileSync(path, key + "\\n"), 120);
+  `, keyPath, expected], { stdio: ["ignore", "pipe", "pipe"] });
+  let auth: AuthStore | undefined;
+  try {
+    await once(writer.stdout, "data");
+    auth = new AuthStore(config);
+    assert.deepEqual(auth.key, Buffer.from(expected, "hex"));
+    const [code] = await once(writer, "exit");
+    assert.equal(code, 0);
+  } finally {
+    auth?.close();
+    if (writer.exitCode === null) writer.kill();
+    f.cleanup();
+  }
+});
+
+test("an existing valid authentication key is reused and re-hardened on restart", () => {
+  const f = fixture(), config = {
+    mode: "lab" as const,
+    databasePath: f.path,
+    publicOrigin: "http://localhost:5173",
+    allowedOrigins: ["http://localhost:5173"],
+  };
+  let first: AuthStore | undefined, second: AuthStore | undefined;
+  try {
+    first = new AuthStore(config);
+    const original = readFileSync(f.path + ".authkey");
+    first.close();
+    first = undefined;
+    chmodSync(f.path + ".authkey", 0o644);
+    second = new AuthStore(config);
+    assert.deepEqual(readFileSync(f.path + ".authkey"), original, "restart must not rotate the authentication key");
+    assert.equal(permissions(f.path + ".authkey"), 0o600, "restart must harden the existing key through its opened descriptor");
+  } finally {
+    second?.close();
+    first?.close();
+    f.cleanup();
   }
 });
 
