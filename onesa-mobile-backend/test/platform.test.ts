@@ -525,6 +525,39 @@ test("customer application ownership, correction and host-pending lifecycle", ()
     store.close();
   }
 });
+// Legacy duplicate active records can exist after older bounded-list checks; every one must remain visible and block new submissions.
+test("all historical active pilot applications remain visible and block duplicates beyond the 200-row display limit", () => {
+  const { store, p } = fixture();
+  try {
+    const active = store.insert("applications", customer.subject, {
+      ...appInput, state: "review_required", mode: "lab", networkState: "not_provisioned",
+    });
+    const olderActive = store.insert("applications", customer.subject, {
+      ...appInput, state: "information_required", mode: "lab", networkState: "not_provisioned",
+    });
+    store.db.prepare("UPDATE platform_records SET created_at=? WHERE id=?")
+      .run("2020-01-01T00:00:00.000Z", active.id);
+    store.db.prepare("UPDATE platform_records SET created_at=? WHERE id=?")
+      .run("2019-01-01T00:00:00.000Z", olderActive.id);
+    for (let i = 0; i < 205; i++)
+      store.insert("applications", customer.subject, { ...appInput, state: "declined", syntheticIndex: i });
+    // Reproduces the old failure: a bounded UI/history list misses the active record.
+    assert.equal(store.list("applications", customer.subject).some((item) => item.id === active.id), false);
+    const customerSnapshot = p.me(customer) as { activeApplication: RecordItem | null; activeApplications: RecordItem[] };
+    assert.equal(customerSnapshot.activeApplication?.id, active.id);
+    assert.deepEqual(customerSnapshot.activeApplications.map((item) => item.id), [active.id, olderActive.id]);
+    const before = store.count("applications", customer.subject);
+    assert.throws(() => p.apply(customer, appInput, randomUUID()), fault("APPLICATION_EXISTS"));
+    assert.equal(store.count("applications", customer.subject), before);
+    // The check is owner-scoped; a different customer may still submit a pilot request.
+    assert.equal(p.apply(other, appInput, randomUUID()).owner, other.subject);
+    const otherSnapshot = p.me(other) as { activeApplication: RecordItem | null; activeApplications: RecordItem[] };
+    assert.equal(otherSnapshot.activeApplication?.owner, other.subject);
+    assert.equal(otherSnapshot.activeApplications.length, 1);
+  } finally {
+    store.close();
+  }
+});
 test("support cases can be answered, reopened by their owner and resolved with a trail", () => {
   const { store, p } = fixture();
   try {
@@ -566,6 +599,21 @@ test("support cases can be answered, reopened by their owner and resolved with a
     );
     assert.equal(ticket.status, "open");
     assert.equal((ticket.notes as unknown[]).length, 2);
+    assert.equal((ticket.notes as { authorRole: string }[])[1]?.authorRole, "customer");
+    // Staff-owned support cases are legitimate internal records. Their
+    // replies must never be falsely attributed to a customer.
+    const staffCase = p.ticket(
+      support,
+      { category: "sim", subject: "Internal pilot question", message: "Review the lab fixture" },
+      randomUUID(),
+    );
+    const staffReply = p.reply(
+      support,
+      staffCase.id,
+      { revision: staffCase.revision, message: "Reviewed the synthetic evidence" },
+      randomUUID(),
+    );
+    assert.equal((staffReply.notes as { authorRole: string }[])[0]?.authorRole, "support");
     const request = p.request(
       customer,
       { type: "sim_replacement", detail: "Pilot request" },

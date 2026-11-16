@@ -360,7 +360,9 @@ try {
   const resultForm=staffPage.getByRole('form',{name:'Record result '+trial.id,exact:true});
   await resultForm.getByLabel('Result',{exact:false}).selectOption('pass');
   await resultForm.getByLabel('Evidence source',{exact:false}).selectOption('manual_field_record');
-  await resultForm.getByLabel('Observation date and time',{exact:false}).fill(new Date().toISOString().slice(0,19));
+  // HTML normalizes a whole minute by omitting its zero seconds.
+  const observationTime = new Date().toISOString().slice(0,19).replace(/:00$/, '');
+  await resultForm.getByLabel('Observation date and time',{exact:false}).fill(observationTime);
   await resultForm.getByLabel('Evidence reference',{exact:false}).fill('SYNTHETIC-NO-RADIO-OBSERVATION');
   await resultForm.getByLabel('Approved test-plan reference',{exact:false}).fill('SYNTHETIC-TEST-PLAN');
   await resultForm.getByLabel('What happened?',{exact:false}).fill('Synthetic software acceptance observation. No carrier or satellite network was used.');

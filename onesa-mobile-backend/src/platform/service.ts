@@ -12,7 +12,11 @@ import {
   type Permission,
   type RecordItem,
 } from "./model.ts";
+import { applyQualificationStep, type Qualification } from "../contracts/qualification.ts";
 import { Store } from "./store.ts";
+
+const mandatoryChecks = new Set(["asset_label", "power", "management_security", "equipment_approval"]);
+const equipmentWithOptionalChecks = new Set(["test_sim", "ups", "other"]);
 
 export class Platform {
   store: Store;
@@ -78,6 +82,7 @@ export class Platform {
     };
   }
   me(actor: Actor): unknown {
+    const activeApplications = this.store.openApplications(actor.subject);
     const pages = Object.fromEntries(
       ["applications", "tickets", "ledger", "requests"].map((kind) => [
         kind,
@@ -87,6 +92,8 @@ export class Platform {
     return {
       profile: { subject: actor.subject, displayName: actor.displayName },
       launchInterest: this.store.list("launchInterests", actor.subject, 1)[0] ?? null,
+      activeApplications,
+      activeApplication: activeApplications[0] ?? null,
       ...Object.fromEntries(
         Object.entries(pages).map(([kind, page]) => [kind, page.items]),
       ),
@@ -389,24 +396,12 @@ export class Platform {
           "ASSET_NOT_RECEIVED",
           "Receive the asset before recording commissioning checks.",
         );
-      if (
-        data.result === "not_applicable" &&
-        [
-          "asset_label",
-          "power",
-          "management_security",
-          "equipment_approval",
-        ].includes(data.check)
-      )
-        throw new DomainError(
-          400,
-          "CHECK_REQUIRED",
-          "This check cannot be marked not applicable.",
-        );
       if (data.result === "not_applicable") {
-        if (!["test_sim", "ups", "other"].includes(String(item.assetType)))
+        if (mandatoryChecks.has(data.check))
+          throw new DomainError(400, "CHECK_REQUIRED", "This check cannot be marked not applicable.");
+        if (!equipmentWithOptionalChecks.has(String(item.assetType)))
           throw new DomainError(400, "CHECK_REQUIRED", "Firmware, connectivity and recovery must be checked for this equipment type.");
-        if (!data.note)
+        if (!data.note?.trim())
           throw new DomainError(400, "CHECK_REASON_REQUIRED", "Explain why this check does not apply to this exact item.");
       }
       const existingChecks = item.checks as Record<string, {result: string}>;
@@ -530,11 +525,30 @@ export class Platform {
         // a same-second observation is not rejected because the plan has milliseconds.
         if (Math.floor(Date.parse(data.observedAt) / 1000) < Math.floor(Date.parse(item.createdAt) / 1000))
           throw new DomainError(409, "TRIAL_PLAN_AFTER_OBSERVATION", "A passing manual observation must follow the plan and its agreed pass criteria. Retrospective notes can be recorded without claiming a passed planned test.");
+        if (item.plannedFor && data.observedAt.slice(0, 10) < String(item.plannedFor))
+          throw new DomainError(409, "TRIAL_BEFORE_SCHEDULED_DATE", "A passing manual observation cannot predate the scheduled trial date. Replan for the actual authorized test date.");
         const plannedAsset = item.plannedAsset as Record<string, unknown> | undefined;
         if (!plannedAsset || ["id", "assetType", "manufacturer", "model", "firmware", "serialReference", "typeApprovalRef"].some(field => (plannedAsset[field] ?? null) !== (asset[field] ?? null)))
           throw new DomainError(409, "TRIAL_CONFIGURATION_CHANGED", "The equipment configuration changed after planning. Plan a new trial for the current item and review its exact authorization scope.");
         if (item.path === "direct_to_cell" && !["android_phone", "iphone"].includes(String(asset.assetType)))
           throw new DomainError(409, "INVALID_CONNECTIVITY_PATH", "A passing direct-to-cell trial must identify the actual handset.");
+        // Commissioning completed after a field observation cannot be used to
+        // retroactively qualify that observation. Legacy records lacking a
+        // check timestamp must also fail closed until requalified.
+        const checks = asset.checks as Record<string, { result?: string; checkedAt?: string; note?: string }> | undefined;
+        const observedSecond = Math.floor(Date.parse(data.observedAt) / 1000);
+        for (const check of commissioningKeys) {
+          const record = checks?.[check];
+          const validExemption = record?.result === "not_applicable"
+            && !mandatoryChecks.has(check)
+            && equipmentWithOptionalChecks.has(String(asset.assetType))
+            && typeof record.note === "string" && record.note.trim().length > 0;
+          const checkedAt = typeof record?.checkedAt === "string" ? Date.parse(record.checkedAt) : NaN;
+          if ((record?.result !== "pass" && !validExemption) || !Number.isFinite(checkedAt))
+            throw new DomainError(409, "TRIAL_COMMISSIONING_INCOMPLETE", "Complete and document each applicable commissioning check before recording a passing field observation.");
+          if (Math.floor(checkedAt / 1000) > observedSecond)
+            throw new DomainError(409, "TRIAL_COMMISSIONING_AFTER_OBSERVATION", "All commissioning checks must precede a passing field observation. Plan and record a new authorized observation after requalification.");
+        }
         const required = item.path === "direct_to_cell"
           ? ["host_agreement", "equipment_approval", "satellite_authorization", "satellite_entitlement"]
           : ["host_agreement", "equipment_approval"];
@@ -679,11 +693,7 @@ export class Platform {
       );
     const data = parse(schemas.application, input);
     return this.write(actor, key, "application.create", data, () => {
-      if (
-        this.store
-          .list("applications", actor.subject)
-          .some((a) => a.state !== "declined")
-      )
+      if (this.store.hasOpenApplication(actor.subject))
         throw new DomainError(
           409,
           "APPLICATION_EXISTS",
@@ -718,6 +728,8 @@ export class Platform {
       );
     return this.write(actor, key, "application.review:" + id, data, () => {
       const item = this.store.get("applications", id);
+      if (item.qualification)
+        throw new DomainError(409, "QUALIFICATION_REVIEW_LOCKED", "This reviewed application already has a provider qualification record.");
       if (item.state === "declined")
         throw new DomainError(
           409,
@@ -737,6 +749,24 @@ export class Platform {
         networkState: "not_provisioned",
       });
       this.store.audit(actor, "application.reviewed", id);
+      return result;
+    });
+  }
+  qualifyProvider(actor: Actor, id: string, input: unknown, key: string): RecordItem {
+    requirePermission(actor, "subscribers.review");
+    this.labOnly();
+    const data = parse(schemas.qualification, input);
+    return this.write(actor, key, "qualification.step:" + id, data, () => {
+      const item = this.store.get("applications", id);
+      if (item.mode !== "lab" || item.state !== "awaiting_host" || !item.registrationReference)
+        throw new DomainError(409, "HOST_REVIEW_REQUIRED", "Complete the pilot registration review before running the provider fixture.");
+      const previous = item.qualification as Qualification | undefined;
+      const next = applyQualificationStep(id, item.deviceModel, item.simFormat, previous, data.step, data.sequence);
+      if (next === previous) return item;
+      if (data.revision !== item.revision)
+        throw new DomainError(409, "REVISION_CONFLICT", "Refresh the application before updating its provider qualification.");
+      const result = this.store.update(item, data.revision, { qualification: next });
+      this.store.audit(actor, "qualification." + data.step, item.id);
       return result;
     });
   }
@@ -833,7 +863,9 @@ export class Platform {
         {
           text: data.message,
           at: new Date().toISOString(),
-          authorRole: "customer",
+          // Staff can own internal support cases too. Never record a staff
+          // message as a customer message in the case history.
+          authorRole: actor.role,
         },
       ];
       if (notes.length > 100)

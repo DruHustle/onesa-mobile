@@ -151,21 +151,53 @@ jobs:
         archive="$RUNNER_TEMP/OnesaMobilePreview-device.xcarchive"
         trap 'rm -rf "$archive"' EXIT
         bash "$GITHUB_WORKSPACE/scripts/ios-device-distribution.sh" check "$archive"
-    - name: Compile the unsigned iPhone and iPad simulator target
-      run: xcodebuild -workspace ios/OnesaMobilePreview.xcworkspace -scheme OnesaMobilePreview -configuration Debug
-        -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath .validation/ios-build
-        CODE_SIGNING_ALLOWED=NO build
-    - name: Confirm native simulator app output
-      run: test -d .validation/ios-build/Build/Products/Debug-iphonesimulator/OnesaMobilePreview.app
-    - name: Archive only the unsigned simulator application
+    - name: Compile the standalone iPhone and iPad simulator target
+      env:
+        EXPO_PUBLIC_API_BASE_URL: https://mobile.onesa.eu/api
       run: |
+        xcodebuild -workspace ios/OnesaMobilePreview.xcworkspace -scheme OnesaMobilePreview -configuration Release \
+          -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath .validation/ios-build \
+          CODE_SIGNING_ALLOWED=NO build
+    - name: Verify embedded JavaScript and retain the standalone simulator app
+      run: |
+        products=.validation/ios-build/Build/Products/Release-iphonesimulator
+        test -s "$products/OnesaMobilePreview.app/main.jsbundle"
         mkdir -p native-artifacts
-        tar -czf native-artifacts/OnesaMobilePreview-simulator.tar.gz -C .validation/ios-build/Build/Products/Debug-iphonesimulator OnesaMobilePreview.app
+        tar -czf native-artifacts/OnesaMobilePreview-simulator.tar.gz -C "$products" OnesaMobilePreview.app
     - name: Retain the unsigned iOS simulator application
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
       with:
-        name: onesa-mobile-ios-simulator-unsigned-${{ github.sha }}
+        name: onesa-mobile-ios-simulator-standalone-unsigned-${{ github.sha }}
         path: onesa-mobile-frontend/mobile/native-artifacts/OnesaMobilePreview-simulator.tar.gz
         if-no-files-found: error
         retention-days: ${{ github.event_name == 'pull_request' && 1 || 7 }}
         compression-level: 0
+    - name: Install and cold-launch the retained simulator app without Metro
+      run: |
+        device=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; print(next(device["udid"] for runtime, devices in sorted(json.load(sys.stdin)["devices"].items(), reverse=True) if ".iOS-" in runtime for device in devices if device["name"].startswith("iPhone") and device["isAvailable"]))')
+        xcrun simctl boot "$device" || xcrun simctl list devices booted | grep -F "$device"
+        xcrun simctl bootstatus "$device" -b
+        xcrun simctl install "$device" .validation/ios-build/Build/Products/Release-iphonesimulator/OnesaMobilePreview.app
+        xcrun simctl launch "$device" eu.onesa.mobile.preview
+        cat > "$RUNNER_TEMP/read-release-screen.swift" <<'SWIFT'
+        import Foundation
+        import Vision
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = .accurate
+        try VNImageRequestHandler(url: URL(fileURLWithPath: CommandLine.arguments[1])).perform([request])
+        let lines = (request.results ?? []).compactMap { $0.topCandidates(1).first?.string.lowercased() }
+        let screen = lines.joined(separator: " ")
+        if screen.contains("your mobile account") {
+            print("The installed standalone iPhone simulator application rendered Your mobile account.")
+        } else {
+            print("Observed public first-launch text: " + screen)
+            exit(1)
+        }
+        SWIFT
+        xcrun swiftc "$RUNNER_TEMP/read-release-screen.swift" -o "$RUNNER_TEMP/read-release-screen"
+        for attempt in {1..15}; do
+          xcrun simctl io "$device" screenshot "$RUNNER_TEMP/mobile-first-screen.png"
+          if "$RUNNER_TEMP/read-release-screen" "$RUNNER_TEMP/mobile-first-screen.png"; then exit 0; fi
+          sleep 2
+        done
+        exit 1

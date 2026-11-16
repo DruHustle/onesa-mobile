@@ -22,13 +22,34 @@ export function isSessionDiscovery(value: unknown, productionRequired = false): 
 /** Validate the account before it becomes an actionable or persisted snapshot. */
 export function isAccountSnapshot(value: unknown, subject: string): value is Account {
   const data = value as Account | null;
+  const validItem = (item: unknown): item is Item =>
+    !!item && typeof item === 'object' && !Array.isArray(item) &&
+    typeof (item as Item).id === 'string' &&
+    Number.isInteger((item as Item).revision) && (item as Item).revision > 0;
+  const activeApplicationValid = data?.activeApplication === undefined ||
+    data.activeApplication === null || validItem(data.activeApplication);
+  const activeApplicationsValid = data?.activeApplications === undefined ||
+    (Array.isArray(data.activeApplications) && data.activeApplications.every(validItem));
   return !!data && data.profile?.subject === subject &&
     typeof data.profile.displayName === 'string' &&
+    activeApplicationValid && activeApplicationsValid &&
     [data.applications, data.tickets, data.ledger, data.requests].every(rows =>
-      Array.isArray(rows) && rows.every(item => typeof item?.id === 'string' &&
-        Number.isInteger(item.revision) && item.revision > 0)) &&
+      Array.isArray(rows) && rows.every(validItem)) &&
     !!data.network && typeof data.network.state === 'string' &&
     !!data.status && ['lab', 'production'].includes(data.status.mode);
+}
+
+/** Prefer the server's owner-scoped full-history result over bounded pages. */
+export function activePilotApplications(account: Account | null): Item[] {
+  if (!account) return [];
+  if (Array.isArray(account.activeApplications) && account.activeApplications.length)
+    return account.activeApplications;
+  if (account.activeApplication) return [account.activeApplication];
+  const recent = account.applications.filter(item => item.state !== 'declined');
+  return recent.length ? recent : account.applications.slice(0, 1);
+}
+export function activePilotApplication(account: Account | null): Item | undefined {
+  return activePilotApplications(account)[0];
 }
 
 export function sessionRemainingMs(value: Credential | null, now = Date.now()): number {

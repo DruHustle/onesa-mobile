@@ -69,6 +69,13 @@ test("N/A requires a reason and cannot bypass checks on active network devices",
     let passive = p.createAsset(ops, { siteId: site.id, tag: "LAB-CABLE", assetType: "other", manufacturer: "Fixture", model: "Passive cable" }, randomUUID());
     passive = p.updateAsset(ops, passive.id, { revision: passive.revision, state: "received" }, randomUUID());
     assert.throws(() => p.commission(ops, passive.id, { revision: passive.revision, check: "firmware", result: "not_applicable", evidenceRef: "SYNTHETIC" }, randomUUID()), fault("CHECK_REASON_REQUIRED"));
+    // An all-whitespace waiver must not commission equipment or alter its audit state.
+    const auditTail = store.db.prepare("SELECT sequence, hash FROM platform_audit ORDER BY sequence DESC LIMIT 1");
+    const previous = auditTail.get();
+    assert.throws(() => p.commission(ops, passive.id, { revision: passive.revision, check: "firmware", result: "not_applicable", evidenceRef: "SYNTHETIC", note: "  \t  " }, randomUUID()), fault("INVALID_INPUT"));
+    assert.deepEqual(auditTail.get(), previous);
+    assert.equal(store.get("assets", passive.id).revision, passive.revision);
+    assert.equal((store.get("assets", passive.id).checks as Record<string, {result: string}>).firmware!.result, "not_run");
     const checked = p.commission(ops, passive.id, { revision: passive.revision, check: "firmware", result: "not_applicable", evidenceRef: "SYNTHETIC", note: "Passive cable has no software; inspected on bench." }, randomUUID());
     assert.equal((checked.checks as Record<string, {result: string}>).firmware!.result, "not_applicable");
   } finally { store.close(); }
@@ -188,6 +195,85 @@ test("simulated passes and blocked field notes remain distinct from reviewed aut
     assert.deepEqual(result.authorizationEvidence, []);
     const note = p.recordTrial(ops, blocked.id, observation(blocked, [], {result: "blocked", authorizationRef: undefined, evidenceIds: undefined}), randomUUID());
     assert.equal(note.authorizationAssessment, "not_assessed");
+  } finally { store.close(); }
+});
+
+test("field passes cannot use commissioning checks recorded after the observation", () => {
+  const { store, p, site, asset } = fixture();
+  try {
+    // Model a trial planned three minutes ago, with its field observation one
+    // minute later, followed by commissioning only now. No clock sleeps or
+    // live equipment are involved; only the persisted plan date is adjusted.
+    const received = p.updateAsset(ops, asset.id, { revision: asset.revision, state: "received" }, randomUUID());
+    const trial = plan(p, site, received);
+    const observedAt = new Date(Date.now() - 120_000).toISOString();
+    store.db.prepare("UPDATE platform_records SET created_at=? WHERE kind='trials' AND id=?")
+      .run(new Date(Date.now() - 180_000).toISOString(), trial.id);
+    const commissioned = commission(p, received);
+    assert.equal(commissioned.state, "commissioned");
+    const entries = allEvidence(p);
+    assert.throws(
+      () => p.recordTrial(ops, trial.id, observation(trial, entries, { observedAt }), randomUUID()),
+      fault("TRIAL_COMMISSIONING_AFTER_OBSERVATION"),
+    );
+    // The same planned device, observed only after all commissioning checks,
+    // remains eligible for the existing scoped evidence review.
+    const valid = p.recordTrial(ops, trial.id, observation(trial, entries), randomUUID());
+    assert.equal(valid.state, "completed");
+    assert.equal(valid.networkActionExecuted, false);
+  } finally { store.close(); }
+});
+
+test("a legacy commissioning exemption must be valid for the check and recorded equipment", () => {
+  const { store, p, site, asset } = fixture();
+  try {
+    const current = commission(p, asset);
+    const trial = plan(p, site, current);
+    const entries = allEvidence(p);
+    // Older records can contain exemptions that today's commissioning API rejects.
+    store.db.prepare("UPDATE platform_records SET payload=json_set(payload, '$.checks.firmware.result', 'not_applicable', '$.checks.firmware.note', 'Legacy waiver') WHERE id=?").run(current.id);
+    assert.throws(
+      () => p.recordTrial(ops, trial.id, observation(trial, entries), randomUUID()),
+      fault("TRIAL_COMMISSIONING_INCOMPLETE"),
+    );
+    assert.equal(store.get("trials", trial.id).state, "planned");
+
+    const passive = p.createAsset(ops, {siteId: site.id, tag: "LAB-PASSIVE", assetType: "other", manufacturer: "Fixture", model: "Passive device"}, randomUUID());
+    const ready = commission(p, passive);
+    const exempt = p.commission(ops, ready.id, {revision: ready.revision, check: "firmware", result: "not_applicable", evidenceRef: "SYNTHETIC", note: "Passive device has no firmware."}, randomUUID());
+    const passiveTrial = plan(p, site, exempt, "terrestrial");
+    const terrestrial = allEvidence(p, "terrestrial");
+    const sql = "UPDATE platform_records SET payload=json_set(payload, '$.checks.firmware.note', ?) WHERE id=?";
+    store.db.prepare(sql).run("  ", exempt.id);
+    assert.throws(
+      () => p.recordTrial(ops, passiveTrial.id, observation(passiveTrial, terrestrial), randomUUID()),
+      fault("TRIAL_COMMISSIONING_INCOMPLETE"),
+    );
+    store.db.prepare(sql).run("Passive device has no firmware.", exempt.id);
+    assert.equal(p.recordTrial(ops, passiveTrial.id, observation(passiveTrial, terrestrial), randomUUID()).state, "completed");
+  } finally { store.close(); }
+});
+
+test("a passing field observation cannot predate the scheduled trial date", () => {
+  const { store, p, site, asset } = fixture();
+  try {
+    const current = commission(p, asset);
+    const plannedFor = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    const trial = p.createTrial(ops, {
+      siteId: site.id, assetId: current.id, path: "direct_to_cell", service: "sms",
+      scenario: "Scheduled-date boundary", operator: "Fixture operator",
+      deviceScope: scope, acceptanceCriteria: "Synthetic criterion fixed before the planned date.",
+      plannedFor,
+    }, randomUUID());
+    const entries = allEvidence(p);
+    const observedAt = new Date().toISOString();
+    assert.ok(observedAt.slice(0, 10) < plannedFor);
+    assert.throws(
+      () => p.recordTrial(ops, trial.id, observation(trial, entries, { observedAt }), randomUUID()),
+      fault("TRIAL_BEFORE_SCHEDULED_DATE"),
+    );
+    assert.equal(store.get("trials", trial.id).state, "planned");
+    assert.equal(store.verifyAudit(), true);
   } finally { store.close(); }
 });
 

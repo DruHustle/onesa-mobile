@@ -28,6 +28,8 @@ export interface LaunchInterest extends Item {
 }
 export interface CustomerData {
   launchInterest?: LaunchInterest | null;
+  activeApplication?: Item | null;
+  activeApplications?: Item[];
   profile: { subject: string; displayName: string };
   applications: Item[]; tickets: Item[]; ledger: Item[]; requests: Item[];
   pageLimit: number; counts: Record<string, number>; cursors: Partial<Record<Collection, string | null>>;

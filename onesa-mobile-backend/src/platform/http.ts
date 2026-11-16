@@ -626,7 +626,7 @@ export function createPlatformServer(config: PlatformConfig) {
       return;
     }
     const match =
-      /^\/v1\/(ops\/(assets|trials|evidence|applications|ledger)|support\/tickets)\/([a-f0-9-]{36})(?:\/(checks|results|review|refunds))?$/.exec(
+      /^\/v1\/(ops\/(assets|trials|evidence|applications|ledger)|support\/tickets)\/([a-f0-9-]{36})(?:\/(checks|results|review|refunds|qualification))?$/.exec(
         path,
       );
     if (match) {
@@ -637,7 +637,11 @@ export function createPlatformServer(config: PlatformConfig) {
       if (
         method === "POST" &&
         ((resource === "evidence" && action === "review") ||
-          (resource === "ledger" && action === "refunds"))
+          (resource === "ledger" && action === "refunds") ||
+          (resource === "applications" &&
+            (action === "review" || action === "qualification")) ||
+          (resource === "assets" && action === "checks") ||
+          (resource === "trials" && action === "results"))
       )
         auth.requireFresh(session);
       if (method === "PATCH" && resource === "assets" && !action)
@@ -666,6 +670,8 @@ export function createPlatformServer(config: PlatformConfig) {
         action === "review"
       )
         result = platform.reviewApplication(actor, id, await body(req), key);
+      else if (method === "POST" && resource === "applications" && action === "qualification")
+        result = platform.qualifyProvider(actor, id, await body(req), key);
       else if (
         method === "POST" &&
         resource === "ledger" &&

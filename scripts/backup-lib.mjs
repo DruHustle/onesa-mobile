@@ -24,21 +24,23 @@ function checkMode(mode) {
   if (mode !== 'lab' && mode !== 'production') throw new RecoveryError('Specify --mode lab or --mode production.');
 }
 
+// Database and archive inputs must not alias another file through a hard link.
 async function regularFile(path, label, maxBytes = MAX_DATABASE_BYTES) {
   const info = await lstat(path);
-  if (!info.isFile() || info.isSymbolicLink() || info.size > maxBytes) {
-    throw new RecoveryError(`${label} must be a regular, bounded file, not a symbolic link.`);
+  if (!info.isFile() || info.isSymbolicLink() || info.nlink !== 1 || info.size > maxBytes) {
+    throw new RecoveryError(`${label} must be a regular, single-link, bounded file, not a symbolic link.`);
   }
   return info;
 }
 
 /** Secrets never appear in command arguments or console output. */
 export function readKeyFile(path) {
-  const fd = openSync(resolve(path), constants.O_RDONLY | constants.O_NOFOLLOW);
+  const fd = openSync(resolve(path), constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
   try {
+    // Open with O_NOFOLLOW and reject aliases before trusting a recovery key.
     const info = fstatSync(fd);
-    if (!info.isFile() || info.size > 256 || (info.mode & 0o077) !== 0) {
-      throw new RecoveryError('Key files must be regular files with owner-only permissions (chmod 600).');
+    if (!info.isFile() || info.nlink !== 1 || info.size > 256 || (info.mode & 0o077) !== 0) {
+      throw new RecoveryError('Key files must be regular, single-link files with owner-only permissions (chmod 600).');
     }
     const value = readFileSync(fd, 'utf8').trim();
     if (!/^[a-f0-9]{64}$/i.test(value)) throw new RecoveryError('Key files must contain exactly 64 hexadecimal characters.');
