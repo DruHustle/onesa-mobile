@@ -704,7 +704,7 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
       }
     });
   useEffect(()=>{
-    const receive=(url:string|null)=>{if(url===registrationReturn)setReturnedFromRegistration(true);};
+    const receive=(url:string|null|undefined)=>{if(url===registrationReturn)setReturnedFromRegistration(true);};
     const listener=Linking.addEventListener('url',({url})=>receive(url));
     void Linking.getInitialURL().then(receive).catch(()=>{});
     return ()=>listener.remove();
@@ -1072,8 +1072,10 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
                 </>
               )}
               {(!base || discoveryUnavailable || (!loading && authMode !== "lab")) && (
-                <Button secondary onPress={()=>register("user")}>Create an Onesa account</Button>
-                <Button secondary onPress={()=>register("admin")}>Request administrator access</Button>
+                <>
+                  <Button secondary onPress={()=>register("user")}>Create an Onesa account</Button>
+                  <Button secondary onPress={()=>register("admin")}>Request administrator access</Button>
+                </>
               )}
               <Button
                 secondary
