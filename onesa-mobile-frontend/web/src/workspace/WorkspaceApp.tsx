@@ -326,7 +326,7 @@ export default function WorkspaceApp({surface}:{surface:Surface}) {
 function Loading({label}:{label:string}) {return <div className="mw-loading" role="status"><span className="mw-loading-dot" aria-hidden="true"/><p>{label}</p></div>;}
 function RegistrationLink({surface}:{surface:Surface}) {
   const audience=surface==='staff'?'admin':'user';
-  return <a onClick={()=>rememberRegistration(surface)} href={'https://auth.onesa.eu/register?audience='+audience+'&product=mobile&platform=web'}>{surface==='staff'?'Request administrator access':'Create an Onesa account'}</a>;
+  return <a onClick={()=>rememberRegistration(surface)} href={'https://account.onesa.eu/register?audience='+audience+'&product=mobile&platform=web'}>{surface==='staff'?'Request administrator access':'Create an Onesa account'}</a>;
 }
 function PortalAccountLinks({surface}:{surface:Surface}) {
   return <span className="mw-secondary">
