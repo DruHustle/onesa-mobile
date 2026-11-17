@@ -45,6 +45,24 @@ const staffSections: Section[] = [
   {key:'billing',label:'Test ledger',description:'Lab payment records, test refunds and receipts.',permission:'billing'},
   {key:'audit',label:'Audit trail',description:'Recorded actions and audit-chain consistency.',permission:'audit.read'},
 ];
+const registrationKey = 'onesa.mobile.registration';
+function registrationSection(surface:Surface, section:string) {
+  return (surface === 'staff' ? staffSections : customerSections).some(item => item.key === section) ? section : 'home';
+}
+function rememberRegistration(surface:Surface) {
+  try { sessionStorage.setItem(registrationKey, JSON.stringify({surface,section:registrationSection(surface,location.hash.slice(1))})); } catch {}
+}
+function registrationReturned() {
+  if (location.pathname !== '/account/' || location.search !== '?registration=complete') return null;
+  try {
+    const raw=sessionStorage.getItem(registrationKey);
+    sessionStorage.removeItem(registrationKey);
+    if (!raw) return null;
+    const value=JSON.parse(raw);
+    if(value.surface!=='staff' && value.surface!=='customer') return null;
+    return {surface:value.surface as Surface,section:registrationSection(value.surface,value.section)};
+  } catch { return null; }
+}
 const roleNames = ['admin','operations','support','finance','agent','auditor','customer'];
 function validSession(value: Session): boolean {
   return typeof value?.authenticated==='boolean'&&['lab','production'].includes(value.mode)&&['lab','onesa'].includes(value.authMode)&&typeof value.ssoAvailable==='boolean'&&(!value.authenticated||Boolean(value.user&&typeof value.user.subject==='string'&&typeof value.user.displayName==='string'&&roleNames.includes(value.user.role)&&typeof value.csrfToken==='string'&&value.csrfToken.length>0));
@@ -68,6 +86,19 @@ export default function WorkspaceApp({surface}:{surface:Surface}) {
   const retryKeys=useRef(makeRetryKeys()),heading=useRef<HTMLHeadingElement|null>(null),focusHeading=useRef(false);
   const downloadScope=useRef(createSessionDownloadScope());
   const operationScope=useRef(createSessionOperationScope());
+
+  useEffect(()=>{
+    if(refreshing)return;
+    const returned=registrationReturned();
+    if(!returned)return;
+    const {surface:origin,section:screen}=returned;
+    const local=(origin==='staff'?'/internal/':'/account/')+'#'+screen;
+    if(session?.ssoAvailable && !session.authenticated){
+      const query=new URLSearchParams({surface:origin});
+      if(screen!=='home')query.set('section',screen);
+      location.replace('/api/v1/auth/onesa/start?'+query);
+    } else location.replace(local);
+  },[refreshing,session]);
 
   const publishData=useCallback((next:WorkspaceData|null)=>{loadedData.current=next;setData(next);},[]);
   const acceptSession = useCallback((next: Session) => {
@@ -294,9 +325,8 @@ export default function WorkspaceApp({surface}:{surface:Surface}) {
 
 function Loading({label}:{label:string}) {return <div className="mw-loading" role="status"><span className="mw-loading-dot" aria-hidden="true"/><p>{label}</p></div>;}
 function RegistrationLink({surface}:{surface:Surface}) {
-  return surface === 'staff'
-    ? <a href="https://portal.onesa.eu/access/register?audience=admin">Request administrator access</a>
-    : <a href="https://portal.onesa.eu/access/register?audience=user">Create an Onesa account</a>;
+  const audience=surface==='staff'?'admin':'user';
+  return <a onClick={()=>rememberRegistration(surface)} href={'https://auth.onesa.eu/register?audience='+audience+'&product=mobile&platform=web'}>{surface==='staff'?'Request administrator access':'Create an Onesa account'}</a>;
 }
 function PortalAccountLinks({surface}:{surface:Surface}) {
   return <span className="mw-secondary">

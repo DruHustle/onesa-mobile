@@ -209,8 +209,20 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
   const [boundary] = useState(() => new SessionBoundary());
   const [accountReads] = useState(() => new AccountReadTracker());
   const base = configuration.base;
-  function openPortal(registration = false) {
-    const url = registration ? "https://portal.onesa.eu/access/register?audience=user" : "https://portal.onesa.eu/admin";
+  const [returnedFromRegistration,setReturnedFromRegistration]=useState(false);
+  const registrationReturn="onesamobile://auth/registered";
+  async function register() {
+    const platform=Platform.OS==='ios'?'ios':Platform.OS==='android'?'android':'web';
+    const url="https://auth.onesa.eu/register?audience=user&product=mobile&platform="+platform;
+    try {
+      if(platform==='web'){await Linking.openURL(url);return;}
+      await SecureStore.setItemAsync("onesa.mobile.registration",JSON.stringify({tab,expires:Date.now()+30*60*1000}));
+      const result=await WebBrowser.openAuthSessionAsync(url,registrationReturn);
+      if(result.type==='success' && result.url===registrationReturn)setReturnedFromRegistration(true);
+    } catch { setNotice("Registration could not open. Try again from this device."); }
+  }
+  function openPortal() {
+    const url = "https://portal.onesa.eu/admin";
     void Linking.openURL(url).catch(() => setNotice("Open " + url + " in your browser."));
   }
   const resetPrivateState = useCallback(() => {
@@ -580,6 +592,7 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
         state: string;
         verifier: string;
         expires: number;
+        destination?: Tab;
       };
       if (flow.expires < Date.now())
         throw Error("This sign-in expired. Start again.");
@@ -599,6 +612,7 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
         );
         const committed = await saveCredential(issued, operation);
         committed.assertCurrent();
+        if(flow.destination && tabs.includes(flow.destination))setTab(flow.destination);
         callbackCodes.current.add(result.code);
       } catch (e) {
         if (operation.isCurrent()) callbackCodes.current.delete(result.code);
@@ -644,7 +658,7 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
       );
       await saveCredential(result, operation);
     });
-  const signInOnesa = () =>
+  const signInOnesa = (destination?:Tab) =>
     run(async (operation) => {
       if (!base || !storageKey) return;
       const state = base64Url(
@@ -668,7 +682,7 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
       await privateStorage.write(
         operation,
         storageKey + ".flow",
-        JSON.stringify({ state, verifier, expires: Date.now() + 600000 }),
+        JSON.stringify({ state, verifier, expires: Date.now() + 600000, destination }),
       );
       operation.assertCurrent();
       const url = new URL(base + "/v1/auth/onesa/start");
@@ -689,6 +703,27 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
         setNotice("Sign-in cancelled. No account change was made.");
       }
     });
+  useEffect(()=>{
+    const receive=(url:string|null)=>{if(url===registrationReturn)setReturnedFromRegistration(true);};
+    const listener=Linking.addEventListener('url',({url})=>receive(url));
+    void Linking.getInitialURL().then(receive).catch(()=>{});
+    return ()=>listener.remove();
+  },[]);
+  useEffect(()=>{
+    if(!returnedFromRegistration || loading)return;
+    let active=true;
+    void SecureStore.getItemAsync("onesa.mobile.registration").then(async raw=>{
+      if(!active || !raw)return;
+      const value=JSON.parse(raw);
+      if(!active)return;
+      await SecureStore.deleteItemAsync("onesa.mobile.registration");
+      if(!active || !tabs.includes(value.tab) || !Number.isFinite(value.expires) || value.expires<Date.now())return;
+      setReturnedFromRegistration(false);
+      setTab(value.tab);
+      if(storageKey && authMode==='onesa' && ssoAvailable && !credential)void signInOnesa(value.tab);
+    }).catch(()=>{if(active)setNotice('Return to your account and choose Sign in with Onesa.');});
+    return ()=>{active=false;};
+  },[returnedFromRegistration,loading,storageKey,authMode,ssoAvailable,credential]);
   // Sign-out must be able to cancel an in-flight private operation.
   const signOut = async () => {
     const previous = current.current;
@@ -1017,7 +1052,7 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
               ) : (
                 <>
                   <Button
-                    onPress={signInOnesa}
+                    onPress={() => signInOnesa()}
                     disabled={busy || cleanupRequired || !ssoAvailable}
                   >
                     Continue with Onesa
@@ -1037,7 +1072,7 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
                 </>
               )}
               {(!base || discoveryUnavailable || (!loading && authMode !== "lab")) && (
-                <Button secondary onPress={() => openPortal(true)}>Create an Onesa account</Button>
+                <Button secondary onPress={register}>Create an Onesa account</Button>
               )}
               <Button
                 secondary
