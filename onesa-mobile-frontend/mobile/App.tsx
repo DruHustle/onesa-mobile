@@ -211,9 +211,9 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
   const base = configuration.base;
   const [returnedFromRegistration,setReturnedFromRegistration]=useState(false);
   const registrationReturn="onesamobile://auth/registered";
-  async function register() {
+  async function register(audience:"user"|"admin") {
     const platform=Platform.OS==='ios'?'ios':Platform.OS==='android'?'android':'web';
-    const url="https://auth.onesa.eu/register?audience=user&product=mobile&platform="+platform;
+    const url="https://auth.onesa.eu/register?audience="+audience+"&product=mobile&platform="+platform;
     try {
       if(platform==='web'){await Linking.openURL(url);return;}
       await SecureStore.setItemAsync("onesa.mobile.registration",JSON.stringify({tab,expires:Date.now()+30*60*1000}));
@@ -1072,7 +1072,8 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
                 </>
               )}
               {(!base || discoveryUnavailable || (!loading && authMode !== "lab")) && (
-                <Button secondary onPress={register}>Create an Onesa account</Button>
+                <Button secondary onPress={()=>register("user")}>Create an Onesa account</Button>
+                <Button secondary onPress={()=>register("admin")}>Request administrator access</Button>
               )}
               <Button
                 secondary
