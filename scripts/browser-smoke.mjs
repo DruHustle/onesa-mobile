@@ -459,7 +459,7 @@ try {
     assert.equal(await signInLink.getAttribute('href'), 'https://portal.onesa.eu/admin');
     const staff = surface === 'Staff';
     const registrationLink = main.getByRole('link', {name:staff ? 'Request administrator access' : 'Create an Onesa account', exact:true});
-    assert.equal(await registrationLink.getAttribute('href'), 'https://auth.onesa.eu/register?audience=' + (staff ? 'admin' : 'user') + '&product=mobile&platform=web');
+    assert.equal(await registrationLink.getAttribute('href'), 'https://account.onesa.eu/register?audience=' + (staff ? 'admin' : 'user') + '&product=mobile&platform=web');
     const signIn = main.getByRole('form', {name:surface+' sign-in', exact:true});
     assert.equal(await signIn.count(), 0);
     await assertLayout(outagePage, surface.toLowerCase()+'-outage-'+locale);
