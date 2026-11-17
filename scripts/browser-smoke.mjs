@@ -430,7 +430,7 @@ try {
   for(const [surface,path,section] of [['customer','/account/','help'],['staff','/internal/','audit']]){
     const journey=await context('en-GB'),view=await journey.newPage();
     await view.route('**/api/v1/session',route=>route.fulfill({json:{authenticated:false,authMode:'onesa',mode:'lab',ssoAvailable:true}}));
-    await view.route('https://auth.onesa.eu/**',route=>route.fulfill({contentType:'text/html',body:'<a href="'+origin+'/account/?registration=complete">Back to Mobile</a>'}));
+    await view.route('https://account.onesa.eu/**',route=>route.fulfill({contentType:'text/html',body:'<a href="'+origin+'/account/?registration=complete">Back to Mobile</a>'}));
     await view.route('**/api/v1/auth/onesa/start?**',route=>route.fulfill({contentType:'text/html',body:'<h1>Mobile sign-in</h1>'}));
     await view.goto(origin+path+'#'+section);
     await view.getByRole('link',{name:surface==='staff'?'Request administrator access':'Create an Onesa account',exact:true}).click();
