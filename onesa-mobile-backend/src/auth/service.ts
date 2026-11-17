@@ -174,6 +174,12 @@ export class AuthService {
       this.store.record(subject, "lab.user.access_changed", "success");
     });
   }
+  private surfacePrincipal(principal:AuthPrincipal,surface:Surface):AuthPrincipal {
+    // An admin using the customer app acts only on their own customer records.
+    if(this.config.onesa?.audience && principal.source==="onesa" && principal.role==="admin" && surface==="customer")
+      return {...principal,role:"customer"};
+    return principal;
+  }
   private issue(principal: AuthPrincipal, surface: Surface, userRevision: number | null, onesaAccessToken: string | null): AuthIssue {
     const token = randomToken(), id = randomUUID(), csrfToken = randomToken();
     const expiresAt = Math.min(principal.expiresAt, principal.authenticatedAt + SESSION_SECONDS);
@@ -184,7 +190,7 @@ export class AuthService {
       onesa_access_token: onesaAccessToken ? seal(onesaAccessToken, this.store.key) : null, surface,
     });
     this.store.record(principal.subject, "session.created", "success");
-    return { token, session: { ...principal, expiresAt, id, csrfToken, transport: "cookie" } };
+    return { token, session: { ...this.surfacePrincipal(principal,surface), expiresAt, id, csrfToken, transport: "cookie" } };
   }
   async loginLab(input: { username: string; password: string; totp?: string | undefined; surface?: Surface | undefined }, rateKey: string): Promise<AuthIssue> {
     if (this.config.mode !== "lab") throw new AuthError(503, "LAB_AUTH_DISABLED", "Local lab sign-in is disabled.");
@@ -258,7 +264,7 @@ export class AuthService {
       }
     }
     if (!surfaceMatches(principal.role, row.surface) || (isStaff(principal.role) && !principal.mfa)) { this.store.deleteSession(row.id); return null; }
-    return { ...principal, expiresAt: Math.min(row.expires_at, principal.expiresAt), id: row.id, csrfToken: row.csrf, transport };
+    return { ...this.surfacePrincipal(principal,row.surface), expiresAt: Math.min(row.expires_at, principal.expiresAt), id: row.id, csrfToken: row.csrf, transport };
   }
   private async destroySession(row: SessionRow | undefined): Promise<{ centralRevocation: "confirmed" | "unavailable" | "not_applicable" }> {
     if (!row) return { centralRevocation: "not_applicable" };
