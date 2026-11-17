@@ -210,7 +210,7 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
   const [accountReads] = useState(() => new AccountReadTracker());
   const base = configuration.base;
   function openPortal(registration = false) {
-    const url = registration ? "https://portal.onesa.eu/admin?entry=register" : "https://portal.onesa.eu/admin";
+    const url = registration ? "https://portal.onesa.eu/access/register?audience=user" : "https://portal.onesa.eu/admin";
     void Linking.openURL(url).catch(() => setNotice("Open " + url + " in your browser."));
   }
   const resetPrivateState = useCallback(() => {
@@ -1034,8 +1034,10 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
               {(discoveryUnavailable || !base || (!loading && authMode !== "lab" && !ssoAvailable)) && (
                 <>
                   <Button secondary onPress={() => openPortal()}>Sign in to Company Portal</Button>
-                  <Button secondary onPress={() => openPortal(true)}>Create an Onesa account</Button>
                 </>
+              )}
+              {(!base || discoveryUnavailable || (!loading && authMode !== "lab")) && (
+                <Button secondary onPress={() => openPortal(true)}>Create an Onesa account</Button>
               )}
               <Button
                 secondary

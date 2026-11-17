@@ -444,12 +444,9 @@ try {
     await main.getByRole('alert').getByText('Synthetic temporary outage', {exact:true}).waitFor();
     const signInLink = main.getByRole('link', {name:'Sign in to Company Portal', exact:true});
     assert.equal(await signInLink.getAttribute('href'), 'https://portal.onesa.eu/admin');
-    const registrationLink = main.getByRole('link', {name:'Create an Onesa account', exact:true});
-    if (surface === 'Customer') {
-      assert.equal(await registrationLink.getAttribute('href'), 'https://portal.onesa.eu/admin?entry=register');
-    } else {
-      assert.equal(await registrationLink.count(), 0);
-    }
+    const staff = surface === 'Staff';
+    const registrationLink = main.getByRole('link', {name:staff ? 'Request administrator access' : 'Create an Onesa account', exact:true});
+    assert.equal(await registrationLink.getAttribute('href'), 'https://portal.onesa.eu/access/register?audience=' + (staff ? 'admin' : 'user'));
     const signIn = main.getByRole('form', {name:surface+' sign-in', exact:true});
     assert.equal(await signIn.count(), 0);
     await assertLayout(outagePage, surface.toLowerCase()+'-outage-'+locale);

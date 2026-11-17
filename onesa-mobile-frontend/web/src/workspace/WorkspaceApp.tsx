@@ -293,10 +293,15 @@ export default function WorkspaceApp({surface}:{surface:Surface}) {
 }
 
 function Loading({label}:{label:string}) {return <div className="mw-loading" role="status"><span className="mw-loading-dot" aria-hidden="true"/><p>{label}</p></div>;}
+function RegistrationLink({surface}:{surface:Surface}) {
+  return surface === 'staff'
+    ? <a href="https://portal.onesa.eu/access/register?audience=admin">Request administrator access</a>
+    : <a href="https://portal.onesa.eu/access/register?audience=user">Create an Onesa account</a>;
+}
 function PortalAccountLinks({surface}:{surface:Surface}) {
   return <span className="mw-secondary">
     <a href="https://portal.onesa.eu/admin">Sign in to Company Portal</a>
-    {surface === 'customer' && <> · <a href="https://portal.onesa.eu/admin?entry=register">Create an Onesa account</a></>}
+    {' · '}<RegistrationLink surface={surface}/>
   </span>;
 }
 
@@ -315,9 +320,7 @@ function SignIn({session,surface,section,busy,login}:{session:Session;surface:Su
   }
   return <div className="mw-sign-in"><section className="mw-sign-in-intro"><p className="mw-eyebrow">{surface==='staff'?'Onesa Mobile Operations':'My Onesa Mobile'}</p><h1>{surface==='staff'?'The work behind your network.':'Your next step, clearly.'}</h1><p>{surface==='staff'?'Manage the physical bench, review evidence and support pilot participants.':'Manage your launch preference, ask for help and find your account records.'}</p><div className="mw-sign-in-boundary"><strong>Prelaunch workspace</strong><span>No mobile line or satellite entitlement is activated by signing in.</span></div></section>
     <Panel title={surface==='staff'?'Staff sign-in':'Customer sign-in'} hint={session.authMode==='lab'?'Isolated lab accounts':'Your central Onesa account'}>
-      {session.ssoAvailable&&<div className="mw-sso"><a className="mw-button" href={`/api/v1/auth/onesa/start?${startQuery}`}>Continue with Onesa</a><p className="mw-secondary">{surface === 'customer' && session.mode === 'production'
-        ? 'New to Onesa? Choose Create account on the next screen, verify your email, then request Onesa Mobile access. Once approved, return here to sign in.'
-        : 'Use your central Onesa account. Password recovery is available on the next screen.'}</p></div>}
+      {session.ssoAvailable&&<div className="mw-sso"><a className="mw-button" href={`/api/v1/auth/onesa/start?${startQuery}`}>Continue with Onesa</a><p className="mw-secondary"><RegistrationLink surface={surface}/></p></div>}
       {session.authMode==='lab'?<><Info>Use the pilot credentials supplied to you. These are lab accounts; do not enter a password from another service.{surface==='staff'?' Staff access also needs an authenticator code.':''}</Info><form className="mw-form mw-login-form" aria-label={`${surface==='staff'?'Staff':'Customer'} sign-in`} onSubmit={event=>void submit(event)}><fieldset disabled={busy||sending}><legend className="mw-visually-hidden">Pilot sign-in</legend>
         <label htmlFor="mw-username"><span>Lab username</span><input id="mw-username" name="username" autoComplete="username" required maxLength={254} autoCapitalize="none" spellCheck={false}/></label>
         <label htmlFor="mw-password"><span>Lab password</span><input id="mw-password" name="password" type="password" autoComplete="current-password" required maxLength={256}/></label>
