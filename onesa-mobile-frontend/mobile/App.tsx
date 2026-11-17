@@ -213,7 +213,7 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
   const registrationReturn="onesamobile://auth/registered";
   async function register(audience:"user"|"admin") {
     const platform=Platform.OS==='ios'?'ios':Platform.OS==='android'?'android':'web';
-    const url="https://auth.onesa.eu/register?audience="+audience+"&product=mobile&platform="+platform;
+    const url="https://account.onesa.eu/register?audience="+audience+"&product=mobile&platform="+platform;
     try {
       if(platform==='web'){await Linking.openURL(url);return;}
       await SecureStore.setItemAsync("onesa.mobile.registration",JSON.stringify({tab,expires:Date.now()+30*60*1000}));
