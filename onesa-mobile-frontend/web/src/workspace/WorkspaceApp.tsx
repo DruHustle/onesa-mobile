@@ -45,6 +45,24 @@ const staffSections: Section[] = [
   {key:'billing',label:'Test ledger',description:'Lab payment records, test refunds and receipts.',permission:'billing'},
   {key:'audit',label:'Audit trail',description:'Recorded actions and audit-chain consistency.',permission:'audit.read'},
 ];
+const registrationKey = 'onesa.mobile.registration';
+function registrationSection(surface:Surface, section:string) {
+  return (surface === 'staff' ? staffSections : customerSections).some(item => item.key === section) ? section : 'home';
+}
+function rememberRegistration(surface:Surface) {
+  try { sessionStorage.setItem(registrationKey, JSON.stringify({surface,section:registrationSection(surface,location.hash.slice(1))})); } catch {}
+}
+function registrationReturned() {
+  if (location.pathname !== '/account/' || location.search !== '?registration=complete') return null;
+  try {
+    const raw=sessionStorage.getItem(registrationKey);
+    sessionStorage.removeItem(registrationKey);
+    if (!raw) return null;
+    const value=JSON.parse(raw);
+    if(value.surface!=='staff' && value.surface!=='customer') return null;
+    return {surface:value.surface as Surface,section:registrationSection(value.surface,value.section)};
+  } catch { return null; }
+}
 const roleNames = ['admin','operations','support','finance','agent','auditor','customer'];
 function validSession(value: Session): boolean {
   return typeof value?.authenticated==='boolean'&&['lab','production'].includes(value.mode)&&['lab','onesa'].includes(value.authMode)&&typeof value.ssoAvailable==='boolean'&&(!value.authenticated||Boolean(value.user&&typeof value.user.subject==='string'&&typeof value.user.displayName==='string'&&roleNames.includes(value.user.role)&&typeof value.csrfToken==='string'&&value.csrfToken.length>0));
@@ -68,6 +86,19 @@ export default function WorkspaceApp({surface}:{surface:Surface}) {
   const retryKeys=useRef(makeRetryKeys()),heading=useRef<HTMLHeadingElement|null>(null),focusHeading=useRef(false);
   const downloadScope=useRef(createSessionDownloadScope());
   const operationScope=useRef(createSessionOperationScope());
+
+  useEffect(()=>{
+    if(refreshing)return;
+    const returned=registrationReturned();
+    if(!returned)return;
+    const {surface:origin,section:screen}=returned;
+    const local=(origin==='staff'?'/internal/':'/account/')+'#'+screen;
+    if(session?.ssoAvailable && !session.authenticated){
+      const query=new URLSearchParams({surface:origin});
+      if(screen!=='home')query.set('section',screen);
+      location.replace('/api/v1/auth/onesa/start?'+query);
+    } else location.replace(local);
+  },[refreshing,session]);
 
   const publishData=useCallback((next:WorkspaceData|null)=>{loadedData.current=next;setData(next);},[]);
   const acceptSession = useCallback((next: Session) => {
@@ -293,10 +324,14 @@ export default function WorkspaceApp({surface}:{surface:Surface}) {
 }
 
 function Loading({label}:{label:string}) {return <div className="mw-loading" role="status"><span className="mw-loading-dot" aria-hidden="true"/><p>{label}</p></div>;}
+function RegistrationLink({surface}:{surface:Surface}) {
+  const audience=surface==='staff'?'admin':'user';
+  return <a onClick={()=>rememberRegistration(surface)} href={'https://account.onesa.eu/register?audience='+audience+'&product=mobile&platform=web'}>{surface==='staff'?'Request administrator access':'Create an Onesa account'}</a>;
+}
 function PortalAccountLinks({surface}:{surface:Surface}) {
   return <span className="mw-secondary">
     <a href="https://portal.onesa.eu/admin">Sign in to Company Portal</a>
-    {surface === 'customer' && <> · <a href="https://portal.onesa.eu/admin?entry=register">Create an Onesa account</a></>}
+    {' · '}<RegistrationLink surface={surface}/>
   </span>;
 }
 
@@ -315,9 +350,7 @@ function SignIn({session,surface,section,busy,login}:{session:Session;surface:Su
   }
   return <div className="mw-sign-in"><section className="mw-sign-in-intro"><p className="mw-eyebrow">{surface==='staff'?'Onesa Mobile Operations':'My Onesa Mobile'}</p><h1>{surface==='staff'?'The work behind your network.':'Your next step, clearly.'}</h1><p>{surface==='staff'?'Manage the physical bench, review evidence and support pilot participants.':'Manage your launch preference, ask for help and find your account records.'}</p><div className="mw-sign-in-boundary"><strong>Prelaunch workspace</strong><span>No mobile line or satellite entitlement is activated by signing in.</span></div></section>
     <Panel title={surface==='staff'?'Staff sign-in':'Customer sign-in'} hint={session.authMode==='lab'?'Isolated lab accounts':'Your central Onesa account'}>
-      {session.ssoAvailable&&<div className="mw-sso"><a className="mw-button" href={`/api/v1/auth/onesa/start?${startQuery}`}>Continue with Onesa</a><p className="mw-secondary">{surface === 'customer' && session.mode === 'production'
-        ? 'New to Onesa? Choose Create account on the next screen, verify your email, then request Onesa Mobile access. Once approved, return here to sign in.'
-        : 'Use your central Onesa account. Password recovery is available on the next screen.'}</p></div>}
+      {session.ssoAvailable&&<div className="mw-sso"><a className="mw-button" href={`/api/v1/auth/onesa/start?${startQuery}`}>Continue with Onesa</a><p className="mw-secondary"><RegistrationLink surface={surface}/></p></div>}
       {session.authMode==='lab'?<><Info>Use the pilot credentials supplied to you. These are lab accounts; do not enter a password from another service.{surface==='staff'?' Staff access also needs an authenticator code.':''}</Info><form className="mw-form mw-login-form" aria-label={`${surface==='staff'?'Staff':'Customer'} sign-in`} onSubmit={event=>void submit(event)}><fieldset disabled={busy||sending}><legend className="mw-visually-hidden">Pilot sign-in</legend>
         <label htmlFor="mw-username"><span>Lab username</span><input id="mw-username" name="username" autoComplete="username" required maxLength={254} autoCapitalize="none" spellCheck={false}/></label>
         <label htmlFor="mw-password"><span>Lab password</span><input id="mw-password" name="password" type="password" autoComplete="current-password" required maxLength={256}/></label>

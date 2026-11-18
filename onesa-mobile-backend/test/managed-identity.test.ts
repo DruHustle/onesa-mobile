@@ -53,6 +53,7 @@ const access = (extra: JWTPayload = {}) => {
   });
 };
 test("managed Mobile web callback returns to its section, retains the stable account and reads its session after an offline API restart", async () => {
+  let grant:JWTPayload={};
   const root = mkdtempSync(join(tmpdir(), "onesa-mobile-oidc-"));
   const options: AuthConfig = {
     mode: "production",
@@ -90,13 +91,14 @@ test("managed Mobile web callback returns to its section, retains the stable acc
       aud: config.clientId,
       sub: subject,
       nonce: query.get("nonce"),
+      auth_time: now,
       iat: now,
       exp: now + 180,
     });
     return Response.json({
       token_type: "Bearer",
       id_token: id,
-      access_token: await access(),
+      access_token: await access(grant),
     });
   };
   try {
@@ -121,6 +123,7 @@ test("managed Mobile web callback returns to its section, retains the stable acc
     assert.equal(result.session.subject, uid);
     const verifier = randomBytes(32).toString("base64url"),
       nativeState = randomBytes(32).toString("base64url");
+    grant={[scope+"roles"]:["admin"],[scope+"mfa_time"]:Math.floor(Date.now()/1000)};
     const handoff = await auth.beginOnesa({
       surface: "customer",
       native: {
@@ -148,6 +151,16 @@ test("managed Mobile web callback returns to its section, retains the stable acc
       verifier,
     });
     assert.equal(nativeSession.session.subject, uid);
+    assert.equal(nativeSession.session.role,"customer");
+    assert.equal((await auth.authenticate({authorization:"Bearer "+nativeSession.token}))?.role,"customer");
+    const staff=await auth.beginOnesa({surface:"staff",section:"audit"});
+    query=new URL(staff.redirectUrl).searchParams;
+    const staffCallback=new URL(config.redirectUri);
+    staffCallback.search=new URLSearchParams({state:query.get("state")!,code:"fresh-staff"}).toString();
+    const staffLogin=await auth.completeOnesa({url:staffCallback,flowCookie:staff.flowCookie});
+    assert.equal(staffLogin.session.role,"admin");
+    assert.equal(staffLogin.session.subject,uid);
+    assert.equal((await auth.authenticate({cookie:"__Host-onesa_mobile_session="+staffLogin.token}))?.role,"admin");
     await assert.rejects(
       auth.exchangeNative({ code, state: nativeState, verifier }),
     );

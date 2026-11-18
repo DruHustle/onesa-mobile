@@ -427,6 +427,19 @@ try {
   record('a completed mutation delivered after client expiry cannot restore private data or show a stale success');
   await expiryContext.close();
 
+  for(const [surface,path,section] of [['customer','/account/','help'],['staff','/internal/','audit']]){
+    const journey=await context('en-GB'),view=await journey.newPage();
+    await view.route('**/api/v1/session',route=>route.fulfill({json:{authenticated:false,authMode:'onesa',mode:'lab',ssoAvailable:true}}));
+    await view.route('https://account.onesa.eu/**',route=>route.fulfill({contentType:'text/html',body:'<a href="'+origin+'/account/?registration=complete">Back to Mobile</a>'}));
+    await view.route('**/api/v1/auth/onesa/start?**',route=>route.fulfill({contentType:'text/html',body:'<h1>Mobile sign-in</h1>'}));
+    await view.goto(origin+path+'#'+section);
+    await view.getByRole('link',{name:surface==='staff'?'Request administrator access':'Create an Onesa account',exact:true}).click();
+    await view.getByRole('link',{name:'Back to Mobile'}).click();
+    await view.getByRole('heading',{name:'Mobile sign-in'}).waitFor();
+    assert.equal(view.url(),origin+'/api/v1/auth/onesa/start?surface='+surface+'&section='+section);
+    await journey.close();
+  }
+
   // An outage can be the first screen in either workspace. Keep its name inside main
   // and reachable with the same keyboard path after the API becomes available.
   for (const [surface, path, heading, locale] of [
@@ -444,12 +457,9 @@ try {
     await main.getByRole('alert').getByText('Synthetic temporary outage', {exact:true}).waitFor();
     const signInLink = main.getByRole('link', {name:'Sign in to Company Portal', exact:true});
     assert.equal(await signInLink.getAttribute('href'), 'https://portal.onesa.eu/admin');
-    const registrationLink = main.getByRole('link', {name:'Create an Onesa account', exact:true});
-    if (surface === 'Customer') {
-      assert.equal(await registrationLink.getAttribute('href'), 'https://portal.onesa.eu/admin?entry=register');
-    } else {
-      assert.equal(await registrationLink.count(), 0);
-    }
+    const staff = surface === 'Staff';
+    const registrationLink = main.getByRole('link', {name:staff ? 'Request administrator access' : 'Create an Onesa account', exact:true});
+    assert.equal(await registrationLink.getAttribute('href'), 'https://account.onesa.eu/register?audience=' + (staff ? 'admin' : 'user') + '&product=mobile&platform=web');
     const signIn = main.getByRole('form', {name:surface+' sign-in', exact:true});
     assert.equal(await signIn.count(), 0);
     await assertLayout(outagePage, surface.toLowerCase()+'-outage-'+locale);
