@@ -330,8 +330,7 @@ function RegistrationLink({surface}:{surface:Surface}) {
 }
 function IdentityUnavailableMessage() {
   return <span className="mw-secondary" role="status">
-    Onesa sign-in is temporarily unavailable. Retry the connection when Identity is restored.
-    Company Portal administration is not a customer sign-in fallback.
+    Onesa sign-in is temporarily unavailable. Retry the connection when it is restored.
   </span>;
 }
 
