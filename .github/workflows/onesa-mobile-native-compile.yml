@@ -178,7 +178,9 @@ jobs:
       run: |
         # A shared runner may retain an unusable simulator migration.
         # Use a fresh disposable device and allow one replacement after a real
-        # boot failure; do not bypass the installed application check.
+        # boot failure; do not bypass the installed application check. New
+        # macOS runner images may spend several minutes migrating CoreLocation
+        # data on the first boot; allow this real boot to finish before retrying.
         read -r device_type runtime < <(xcrun simctl list devices available -j | python3 -c 'import json,sys; print(*next((d["deviceTypeIdentifier"],r) for r,ds in sorted(json.load(sys.stdin)["devices"].items(), reverse=True) if ".iOS-" in r for d in ds if d["name"].startswith("iPhone") and d["isAvailable"]))')
         device=''
         cleanup_device() {
@@ -191,7 +193,7 @@ jobs:
         booted=false
         for attempt in 1 2; do
           device=$(xcrun simctl create "Onesa Mobile CI $GITHUB_RUN_ID-$attempt" "$device_type" "$runtime")
-          if xcrun simctl boot "$device" && python3 -c 'import subprocess,sys; subprocess.run(["xcrun","simctl","bootstatus",sys.argv[1],"-b"],check=True,timeout=180)' "$device"; then
+          if xcrun simctl boot "$device" && python3 -c 'import subprocess,sys; subprocess.run(["xcrun","simctl","bootstatus",sys.argv[1],"-b"],check=True,timeout=480)' "$device"; then
             booted=true
             break
           fi
