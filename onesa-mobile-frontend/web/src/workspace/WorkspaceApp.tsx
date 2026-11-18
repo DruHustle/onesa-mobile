@@ -305,7 +305,7 @@ export default function WorkspaceApp({surface}:{surface:Surface}) {
       <main id="mw-main" className="mw-main" tabIndex={-1}>
         {!session && <div className="mw-page-heading"><h1>{workspaceLabel}</h1></div>}
         {notice&&<div className="mw-notice" role="status"><span>{notice}</span><button className="mw-dismiss" type="button" aria-label="Dismiss status message" onClick={()=>setNotice(null)}>×</button></div>}
-        {pageError&&<div className="mw-error-banner" role="alert"><p>{pageError}</p><button type="button" className="mw-button mw-button-secondary" disabled={busy||refreshing} onClick={()=>void refresh()}>{refreshing?'Refreshing…':'Retry connection'}</button>{!session && <PortalAccountLinks surface={surface}/>}</div>}
+        {pageError&&<div className="mw-error-banner" role="alert"><p>{pageError}</p><button type="button" className="mw-button mw-button-secondary" disabled={busy||refreshing} onClick={()=>void refresh()}>{refreshing?'Refreshing…':'Retry connection'}</button>{!session && <IdentityUnavailableMessage/>}</div>}
         {!session&&!pageError&&<Loading label="Checking secure access…"/>}
         {session&&!session.authenticated&&<SignIn session={session} surface={surface} section={section} busy={busy||refreshing} login={login}/>}
         {authenticated&&!sameSurface(session!,surface)&&<Panel title={surface==='staff'?'Staff access required':'Customer account required'}><p>This account is assigned to the {session!.user!.role==='customer'?'customer':'staff'} workspace. It cannot open this area.</p><a className="mw-button" href={session!.user!.role==='customer'?'/account/':'/internal/'}>Open your workspace</a></Panel>}
@@ -328,10 +328,10 @@ function RegistrationLink({surface}:{surface:Surface}) {
   const audience=surface==='staff'?'admin':'user';
   return <a onClick={()=>rememberRegistration(surface)} href={'https://account.onesa.eu/register?audience='+audience+'&product=mobile&platform=web'}>{surface==='staff'?'Request administrator access':'Create an Onesa account'}</a>;
 }
-function PortalAccountLinks({surface}:{surface:Surface}) {
-  return <span className="mw-secondary">
-    <a href="https://portal.onesa.eu/admin">Sign in to Company Portal</a>
-    {' · '}<RegistrationLink surface={surface}/>
+function IdentityUnavailableMessage() {
+  return <span className="mw-secondary" role="status">
+    Onesa sign-in is temporarily unavailable. Retry the connection when Identity is restored.
+    Company Portal administration is not a customer sign-in fallback.
   </span>;
 }
 
@@ -356,7 +356,7 @@ function SignIn({session,surface,section,busy,login}:{session:Session;surface:Su
         <label htmlFor="mw-password"><span>Lab password</span><input id="mw-password" name="password" type="password" autoComplete="current-password" required maxLength={256}/></label>
         {surface==='staff'&&<label htmlFor="mw-totp"><span>Authenticator code</span><input id="mw-totp" name="totp" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoComplete="one-time-code" required/><small>Enter the six-digit code from your authenticator.</small></label>}
         <button className="mw-button" type="submit" aria-busy={busy||sending}>{busy||sending?'Signing in…':'Sign in to pilot'}</button>
-      </fieldset>{error&&<p className="mw-form-error" role="alert" ref={errorTarget} tabIndex={-1}>{error}</p>}</form><p className="mw-secondary">Need a pilot account or credential reset? Contact the person who invited you to the pilot.</p></>:!session.ssoAvailable&&<Info tone="pending">Mobile sign-in is awaiting configuration. <PortalAccountLinks surface={surface}/></Info>}
+      </fieldset>{error&&<p className="mw-form-error" role="alert" ref={errorTarget} tabIndex={-1}>{error}</p>}</form><p className="mw-secondary">Need a pilot account or credential reset? Contact the person who invited you to the pilot.</p></>:!session.ssoAvailable&&<Info tone="pending">Mobile sign-in is awaiting configuration. <IdentityUnavailableMessage/></Info>}
     </Panel>
   </div>;
 }
