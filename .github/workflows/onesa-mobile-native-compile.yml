@@ -174,9 +174,29 @@ jobs:
         compression-level: 0
     - name: Install and cold-launch the retained simulator app without Metro
       run: |
-        device=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; print(next(device["udid"] for runtime, devices in sorted(json.load(sys.stdin)["devices"].items(), reverse=True) if ".iOS-" in runtime for device in devices if device["name"].startswith("iPhone") and device["isAvailable"]))')
-        xcrun simctl boot "$device" || xcrun simctl list devices booted | grep -F "$device"
-        xcrun simctl bootstatus "$device" -b
+        # A shared runner may retain an unusable simulator migration.
+        # Use a fresh disposable device and allow one replacement after a real
+        # boot failure; do not bypass the installed application check.
+        read -r device_type runtime < <(xcrun simctl list devices available -j | python3 -c 'import json,sys; print(*next((d["deviceTypeIdentifier"],r) for r,ds in sorted(json.load(sys.stdin)["devices"].items(), reverse=True) if ".iOS-" in r for d in ds if d["name"].startswith("iPhone") and d["isAvailable"]))')
+        device=''
+        cleanup_device() {
+          if [[ -n "$device" ]]; then
+            xcrun simctl shutdown "$device" >/dev/null 2>&1 || true
+            xcrun simctl delete "$device" >/dev/null 2>&1 || true
+          fi
+        }
+        trap cleanup_device EXIT
+        booted=false
+        for attempt in 1 2; do
+          device=$(xcrun simctl create "Onesa Mobile CI $GITHUB_RUN_ID-$attempt" "$device_type" "$runtime")
+          if xcrun simctl boot "$device" && python3 -c 'import subprocess,sys; subprocess.run(["xcrun","simctl","bootstatus",sys.argv[1],"-b"],check=True,timeout=180)' "$device"; then
+            booted=true
+            break
+          fi
+          cleanup_device
+          device=''
+        done
+        [[ "$booted" == true ]] || { echo "No fully booted iPhone simulator is available." >&2; exit 1; }
         xcrun simctl install "$device" .validation/ios-build/Build/Products/Release-iphonesimulator/OnesaMobilePreview.app
         xcrun simctl launch "$device" eu.onesa.mobile.preview
         cat > "$RUNNER_TEMP/read-release-screen.swift" <<'SWIFT'
