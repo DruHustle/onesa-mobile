@@ -79,7 +79,7 @@ jobs:
           fi
           # Retry only observed dependency download failures, keeping this job's cache.
           # Compilation and test errors retain their original nonzero exit status.
-          if [ "$attempt" -eq 3 ] || ! grep -Eq 'Received status code (502|503|504)|Server returned HTTP response code: (502|503|504)|Downloading from https://.*failed: timeout|java\.net\.SocketTimeoutException|Could not find (org\.jetbrains\.kotlin:kotlin-stdlib:2\.3\.0|org\.jetbrains\.kotlin:kotlin-gradle-plugins-bom:2\.2\.0|io\.github\.java-diff-utils:java-diff-utils:4\.15)' "$build_log"; then
+          if [ "$attempt" -eq 3 ] || ! grep -Eq 'Received status code (502|503|504)|Server returned HTTP response code: (502|503|504)|Downloading from https://.*failed: timeout|java\.net\.SocketTimeoutException|Could not find (org\.jetbrains\.kotlin:[a-z0-9-]+:2\.(2\.0|3\.0)|io\.github\.java-diff-utils:java-diff-utils:4\.15)' "$build_log"; then
             exit "$build_status"
           fi
           echo "Transient dependency download failure; retrying Android build ($attempt/3)."
