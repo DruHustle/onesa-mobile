@@ -15,6 +15,11 @@ function stringList(value: unknown): value is string[] {
 export function validateOnesaAssertion(value: unknown, config: OnesaConfig, now: number): AuthPrincipal | null {
   if (!record(value)) throw new AuthError(503, "AUTH_PROVIDER_RESPONSE");
   if (value.active === false) return null;
+  if (!record(value.onesa_product_roles)) throw new AuthError(401, "AUTH_PROVIDER_ASSERTION", "Your current Mobile access could not be verified.");
+  const receivedRole = value.onesa_product_roles.mobile;
+  const role: AuthPrincipal["role"] = receivedRole === "administrator"
+    ? "admin"
+    : isRole(receivedRole) ? receivedRole : (() => { throw new AuthError(401, "AUTH_PROVIDER_ASSERTION", "Your current Mobile access could not be verified."); })();
   if (value.active !== true || value.iss !== config.issuer || value.aud !== config.clientId ||
       typeof value.sub !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.sub) ||
       value.email_verified !== true || typeof value.name !== "string" || value.name.trim().length === 0 || value.name.length > 200 ||
@@ -23,10 +28,9 @@ export function validateOnesaAssertion(value: unknown, config: OnesaConfig, now:
       (value.auth_time as number) <= 0 || (value.auth_time as number) > now ||
       now - (value.auth_time as number) >= 28_800 ||
       !stringList(value.amr) || !stringList(value.onesa_applications) || !value.onesa_applications.includes("mobile") ||
-      !stringList(value.onesa_roles) || !record(value.onesa_product_roles) || !isRole(value.onesa_product_roles.mobile)) {
+      !stringList(value.onesa_roles)) {
     throw new AuthError(401, "AUTH_PROVIDER_ASSERTION", "Your current Mobile access could not be verified.");
   }
-  const role = value.onesa_product_roles.mobile;
   const mfa = value.amr.some((method) => method === "otp" || method === "mfa");
   if (isStaff(role) && !mfa) throw new AuthError(403, "MFA_REQUIRED", "Staff access requires authenticator verification.");
   return {
