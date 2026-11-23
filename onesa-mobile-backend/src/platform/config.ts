@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { isIP } from "node:net";
 import { loadConfig, type ServerConfig } from "../config.ts";
+import type { OnesaConfig } from "../auth/types.ts";
 
 export interface PlatformConfig extends ServerConfig {
   mode: "lab" | "production";
@@ -8,13 +9,7 @@ export interface PlatformConfig extends ServerConfig {
   publicOrigin: string;
   encryptionKey?: string;
   trustedProxyIps: readonly string[];
-  onesa?: {
-    audience?: string;
-    issuer: string;
-    clientId: string;
-    clientSecret: string;
-    redirectUri: string;
-  };
+  onesa?: OnesaConfig;
 }
 export function loadPlatformConfig(
   env: NodeJS.ProcessEnv = process.env,
@@ -54,6 +49,13 @@ export function loadPlatformConfig(
     env.ONESA_CLIENT_ID,
     env.ONESA_CLIENT_SECRET,
   ];
+  const browserLogout = env.ONESA_MOBILE_BROWSER_LOGOUT;
+  if (browserLogout !== undefined && browserLogout !== "false" && browserLogout !== "true") {
+    throw Error("ONESA_MOBILE_BROWSER_LOGOUT must be true or false.");
+  }
+  if (browserLogout === "true" && (mode !== "production" || !env.ONESA_MOBILE_API_AUDIENCE)) {
+    throw Error("Onesa browser logout requires a managed Auth0 Mobile client.");
+  }
   if (env.ONESA_MOBILE_API_AUDIENCE && !values.every(Boolean)) throw Error("Managed Mobile audience requires a configured Onesa client.");
   if (values.some(Boolean) && !values.every(Boolean))
     throw Error("Set all three ONESA identity values together.");
@@ -70,6 +72,7 @@ export function loadPlatformConfig(
       throw Error("ONESA_ISSUER must be an HTTPS issuer URL.");
     onesa = {
       ...(env.ONESA_MOBILE_API_AUDIENCE ? {audience:env.ONESA_MOBILE_API_AUDIENCE} : {}),
+      ...(browserLogout === "true" ? { browserLogout: true } : {}),
       issuer: env.ONESA_ISSUER!,
       clientId: env.ONESA_CLIENT_ID!,
       clientSecret: env.ONESA_CLIENT_SECRET!,

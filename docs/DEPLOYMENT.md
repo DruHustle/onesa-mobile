@@ -24,12 +24,14 @@ Project settings select the web root. The repository’s `vercel.mjs` supplies t
 
 ## Historical Vercel deployment
 
+The following receipts belong to the retired monorepo. The active Vercel project builds from the standalone repository identified above.
+
 | Receipt | Observed result |
 | --- | --- |
-| Source | [`337142d97cf0b5478494c6b28a73c5fd75ae7383`](https://github.com/DruHustle/onesa-ug/commit/337142d97cf0b5478494c6b28a73c5fd75ae7383) |
+| Source | `337142d97cf0b5478494c6b28a73c5fd75ae7383` |
 | Production deployment | `dpl_9pMTeAEjs9NA6bSZxmnQgih9WvmD` — **READY**, Git source matches the commit above |
 | Deployment URL | [onesa-mobile-6rhk7k53s-druhustles-projects.vercel.app](https://onesa-mobile-6rhk7k53s-druhustles-projects.vercel.app) |
-| Source qualification | [Run 42129021936](https://github.com/DruHustle/onesa-ug/actions/runs/42129021936) — **all six jobs passed** |
+| Source qualification | Run `42129021936`, all six jobs passed. [Historical evidence](VALIDATION.md#historical-monorepo-qualification--source-337142d). |
 
 Observed on **5 November 2026 at 23:23 UTC**. Authenticated hosted **GET** requests against that deployment verified:
 
@@ -51,10 +53,10 @@ Security headers restrict scripts and connections to the same origin, prohibit f
 
 ## Commission account access before mobile service
 
-1. Deploy the production API and gateway on the Onesa server with its dedicated volume and the registered Mobile OIDC client. Set `PUBLIC_ORIGIN` to `https://mobile.onesa.eu`. The gateway exposes the API under `/api/`. It needs its own HTTPS hostname under `onesa.eu`.
+1. Deploy the production API and gateway on the Onesa server with its dedicated volume and the registered Mobile OIDC client. In the production Compose environment, set `MOBILE_PUBLIC_ORIGIN=https://mobile.onesa.eu`, `MOBILE_ONESA_ISSUER=https://auth.onesa.eu/` and `MOBILE_ONESA_API_AUDIENCE=https://api.mobile.onesa.eu`. The gateway serves `/api/` on its own approved HTTPS hostname under `onesa.eu`. [Runtime configuration](../infra/runtime/README.md).
 2. On that gateway, confirm `GET /api/v1/session` returns `mode: production`, `authMode: onesa`, `ssoAvailable: true` and an anonymous session. Confirm `GET /api/v1/status` advertises launch interest while sales, carrier provisioning, live payments and satellite entitlement are false.
 3. Set `MOBILE_ACCOUNT_GATEWAY_ORIGIN` to that HTTPS **origin** in the Vercel project's Production environment and redeploy. The rewrite preserves the API path, query and method on the public custom domain. Previews and other aliases keep the holding response. Leave the variable unset until the gateway exists. Removing it and redeploying restores the holding response.
-4. On the custom domain, use an approved test customer to complete Portal sign-in, register interest, refresh, withdraw and sign out. Confirm the account export and staff view reflect the withdrawal. Verify the callback round trip, secure cookie, logout and unauthenticated access before inviting customers. A new customer can create a central Onesa account, verify email and request Mobile access through the Portal.
+4. On the custom domain, use an approved test customer to complete Onesa sign-in, register interest, refresh, withdraw and sign out. Confirm the account export and staff view reflect the withdrawal. Verify the callback round trip, secure cookie, logout and unauthenticated access before inviting customers. A new customer can create a central Onesa account, verify email and request Mobile access through Onesa Account.
 
 A launch preference is associated with the signed-in account. Customers can revise it and the team can review its current state. It collects no phone number, identity document or payment details. It carries no promise of a place in a queue, contact or connectivity.
 

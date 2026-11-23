@@ -2,7 +2,7 @@
 
 **A Zimbabwe mobile-service venture, starting with a physical device bench and a secured pilot operations platform.**
 
-Canonical source: [`DruHustle/onesa-mobile`](https://github.com/DruHustle/onesa-mobile). This standalone repository preserves the complete Mobile product previously maintained in `onesa-ug/onesa-mobile`. [Restoration provenance and deployment transition](docs/STANDALONE_RESTORATION.md).
+The full Onesa Mobile source is in [`DruHustle/onesa-mobile`](https://github.com/DruHustle/onesa-mobile). [Migration history](docs/STANDALONE_RESTORATION.md).
 
 The implemented software includes the public website, authenticated customer and staff web workspaces, an API-connected iPhone/iPad/Android app, persistent hardware commissioning and operations records, scoped identity, support conversations, lab billing, protected PDFs, audit and encrypted recovery tooling. **It does not provide an operating mobile network.** Commercial onboarding, real payment settlement, SIM/eSIM provisioning and satellite entitlement remain disabled until the actual providers and Zimbabwe approvals are commissioned. No carrier or Starlink partnership is claimed.
 
@@ -31,7 +31,14 @@ Each package has its own dependencies and lockfile. Frontends communicate with t
 
 ## Run the local pilot
 
-Use Node **24.22.1** (the qualified runtime) and Git. Start from this product directory:
+Use Node **24.22.1** (the qualified runtime) and Git. For a fresh checkout, run these commands from your Onesa project folder.
+
+```sh
+git clone https://github.com/DruHustle/onesa-mobile.git onesa-mobile
+cd onesa-mobile
+```
+
+Run the pilot commands from the `onesa-mobile` repository root.
 
 ```sh
 npm ci --prefix onesa-mobile-backend

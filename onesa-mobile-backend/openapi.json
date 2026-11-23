@@ -1382,7 +1382,7 @@
     "/v1/session/logout": {
       "post": {
         "operationId": "logoutPresentedSession",
-        "summary": "Destroy the presented local session even during a Portal outage",
+        "summary": "Destroy the presented local session even during an identity outage",
         "tags": [
           "Identity"
         ],
@@ -1400,7 +1400,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Destroy the presented local session even during a Portal outage",
+            "description": "Destroy the presented local session even during an identity outage",
             "headers": {
               "X-Request-Id": {
                 "description": "Server-generated correlation identifier; contains no account credential.",
@@ -1483,7 +1483,7 @@
             "description": "Required with an existing cookie session. Read csrfToken from GET /v1/session. Not required for native bearer transport. Never put it in a URL."
           }
         ],
-        "description": "Cookie transport requires exact Origin and, when a stored session exists, its CSRF token. Native bearer logout may omit Origin. Local destruction precedes best-effort central token revocation. confirmed does not claim global Onesa logout; unavailable means central revocation was not confirmed. Already absent local sessions are idempotent. No Idempotency-Key or JSON body is required."
+        "description": "Cookie transport requires an approved Origin and the stored session CSRF token. Native bearer logout may omit Origin. Local destruction precedes best-effort legacy token revocation. With managed browser logout enabled, a valid cookie session from the public workspace origin can receive a separate Auth0 logout URL with a fixed Mobile landing-page return. This does not confirm provider logout. Already absent local sessions are idempotent. No Idempotency-Key or JSON body is required."
       },
       "options": {
         "operationId": "options_v1_session_logout",
@@ -10214,6 +10214,11 @@
               "unavailable",
               "not_applicable"
             ]
+          },
+          "browserLogoutUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Optional managed Auth0 browser logout URL for the Mobile public origin, issued after deletion of a valid cookie session."
           }
         },
         "required": [

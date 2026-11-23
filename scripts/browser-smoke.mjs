@@ -169,6 +169,8 @@ try {
 
   const publicContext = await context(), publicPage = await publicContext.newPage();
   await publicPage.goto(origin+'/');
+  assert.equal(await publicPage.getByRole('link', {name:'Staff workspace',exact:true}).getAttribute('href'),
+    '/preview/internal/', 'the public website opens the staff introduction before sign-in');
   await publicPage.getByRole('group', {name:'Connectivity paths'}).getByRole('button', {name:'Direct to satellite',exact:true}).click();
   assert.match(await publicPage.locator('#connection-details').innerText(), /unverified/);
   const apps = publicPage.getByRole('region', {name:'Onesa Mobile apps'});

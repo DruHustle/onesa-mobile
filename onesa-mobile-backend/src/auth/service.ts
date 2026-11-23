@@ -58,6 +58,10 @@ export interface AuthCompletion extends AuthIssue {
   readonly clearFlowCookie: string;
   readonly nativeRedirect?: string;
 }
+type LogoutResult = {
+  centralRevocation: "confirmed" | "unavailable" | "not_applicable";
+  browserLogoutUrl?: string;
+};
 
 export class AuthService {
   readonly config: AuthConfig;
@@ -266,7 +270,7 @@ export class AuthService {
     if (!surfaceMatches(principal.role, row.surface) || (isStaff(principal.role) && !principal.mfa)) { this.store.deleteSession(row.id); return null; }
     return { ...this.surfacePrincipal(principal,row.surface), expiresAt: Math.min(row.expires_at, principal.expiresAt), id: row.id, csrfToken: row.csrf, transport };
   }
-  private async destroySession(row: SessionRow | undefined): Promise<{ centralRevocation: "confirmed" | "unavailable" | "not_applicable" }> {
+  private async destroySession(row: SessionRow | undefined): Promise<LogoutResult> {
     if (!row) return { centralRevocation: "not_applicable" };
     this.store.deleteSession(row.id);
     this.store.record(row.subject, "session.signed_out", "success");
@@ -277,19 +281,23 @@ export class AuthService {
     }
     return { centralRevocation: "not_applicable" };
   }
-  async logout(session: AuthSession): Promise<{ centralRevocation: "confirmed" | "unavailable" | "not_applicable" }> {
+  async logout(session: AuthSession): Promise<LogoutResult> {
     const row = this.store.db.prepare("SELECT * FROM mobile_auth_sessions WHERE id=?").get(session.id) as SessionRow | undefined;
     return this.destroySession(row);
   }
   /** Local capability destruction must remain possible when the issuer is unavailable.
    * This method never returns a principal or authorizes any business operation. */
-  async logoutPresented(headers: { authorization?: string | undefined; cookie?: string | undefined }, input: { csrfToken?: string | undefined; origin?: string | undefined }): Promise<{ centralRevocation: "confirmed" | "unavailable" | "not_applicable" }> {
+  async logoutPresented(headers: { authorization?: string | undefined; cookie?: string | undefined }, input: { csrfToken?: string | undefined; origin?: string | undefined }): Promise<LogoutResult> {
     const { token, transport } = this.credential(headers);
     if (transport === "cookie") this.assertOrigin(input.origin);
     else if (input.origin !== undefined) this.assertOrigin(input.origin);
     const row = token ? this.store.sessionByHash(digest(token)) : undefined;
     if (row && transport === "cookie" && (!input.csrfToken || !constantEqual(row.csrf, input.csrfToken))) throw new AuthError(403, "CSRF_INVALID");
-    return this.destroySession(row);
+    const result = await this.destroySession(row);
+    const browserLogoutUrl = transport === "cookie" && input.origin === this.config.publicOrigin && row?.source === "onesa"
+      ? this.identity?.browserLogoutUrl(this.config.publicOrigin)
+      : undefined;
+    return browserLogoutUrl ? { ...result, browserLogoutUrl } : result;
   }
   async beginOnesa(input: OidcStart): Promise<{ redirectUrl: string; flowCookie: string }> {
     if (!this.identity) throw new AuthError(503, "AUTH_NOT_CONFIGURED", "Onesa sign-in has not been configured for Mobile.");

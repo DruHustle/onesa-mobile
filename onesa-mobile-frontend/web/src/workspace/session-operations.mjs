@@ -42,3 +42,17 @@ export function createSessionOperationScope() {
     },
   };
 }
+export function browserLogoutDestination(value, appOrigin) {
+  if (typeof value !== 'string') return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || url.username || url.password || url.hash ||
+        url.pathname !== '/oidc/logout' || url.searchParams.size !== 2 ||
+        (appOrigin === 'https://mobile.onesa.eu' && url.origin !== 'https://auth.onesa.eu') ||
+        !/^[A-Za-z0-9_-]{16,128}$/.test(url.searchParams.get('client_id') ?? '') ||
+        url.searchParams.get('post_logout_redirect_uri') !== new URL('/', appOrigin).href) return null;
+    return url.href;
+  } catch {
+    return null;
+  }
+}
