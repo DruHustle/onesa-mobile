@@ -432,7 +432,7 @@
     "instructions": "Retain approved device/network evidence for real observations. A simulator, UI label, completed form or dish connection does not demonstrate D2C attachment. The operations software records observations and never configures or transmits RF."
   },
   "exclusions": [
-    "No assumed PamoFi inventory or reuse approval",
+    "No assumed PasoFi inventory or reuse approval",
     "No local cellular base station or mobile core purchase in this Light MVNO bench plan",
     "No inferred carrier partnership, spectrum allocation, Zimbabwe satellite coverage or Starlink API",
     "No verified supplier quotation or retail tariff",

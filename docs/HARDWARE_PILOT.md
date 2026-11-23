@@ -1,6 +1,6 @@
 # Physical hardware pilot and commissioning runbook
 
-Prepared **5 November 2026** for a proposed Zimbabwe Light MVNO with a conditional satellite extension. This is a procurement and acceptance plan. No hardware was purchased, configured, connected, measured or commissioned during this review. Existing PamoFi routers/Starlink terminals have not been inspected or assigned to Onesa Mobile.
+Prepared **5 November 2026** for a proposed Zimbabwe Light MVNO with a conditional satellite extension. This is a procurement and acceptance plan. No hardware was purchased, configured, connected, measured or commissioned during this review. Existing PasoFi routers/Starlink terminals have not been inspected or assigned to Onesa Mobile.
 
 Start with the [physical bench pack](PHYSICAL_BENCH.md): numbered wiring plan, staged purchase/reuse decisions, isolation test matrix, power worksheet and first-session handover. The machine-readable [pilot template](../infra/hardware/pilot-template.json) contains unfilled planning fields; it is not a device configuration or evidence that a bench exists.
 

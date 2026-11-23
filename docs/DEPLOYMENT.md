@@ -24,12 +24,14 @@ Project settings select the web root. The repository’s `vercel.mjs` supplies t
 
 ## Historical Vercel deployment
 
+The following receipts belong to the retired monorepo. The active Vercel project builds from the standalone repository identified above.
+
 | Receipt | Observed result |
 | --- | --- |
-| Source | [`337142d97cf0b5478494c6b28a73c5fd75ae7383`](https://github.com/DruHustle/onesa-ug/commit/337142d97cf0b5478494c6b28a73c5fd75ae7383) |
+| Source | `337142d97cf0b5478494c6b28a73c5fd75ae7383` |
 | Production deployment | `dpl_9pMTeAEjs9NA6bSZxmnQgih9WvmD` — **READY**, Git source matches the commit above |
 | Deployment URL | [onesa-mobile-6rhk7k53s-druhustles-projects.vercel.app](https://onesa-mobile-6rhk7k53s-druhustles-projects.vercel.app) |
-| Source qualification | [Run 42129021936](https://github.com/DruHustle/onesa-ug/actions/runs/42129021936) — **all six jobs passed** |
+| Source qualification | Run `42129021936`, all six jobs passed. [Historical evidence](VALIDATION.md#historical-monorepo-qualification--source-337142d). |
 
 Observed on **5 November 2026 at 23:23 UTC**. Authenticated hosted **GET** requests against that deployment verified:
 
