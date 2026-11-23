@@ -52,11 +52,11 @@ if __name__ == "__main__":
         visible("Your mobile account")
         print("Installed application restored the account screen", flush=True)
         # Whether a customer can sign in depends on the hosted account API.
-        # Report its actual fallback separately from the working preview.
+        # Report the account connection state separately from the working preview.
         try:
-            visible("Sign in to Company Portal", allow_scroll=True)
-            print("Hosted account unavailable; installed app offers Company Portal fallback", flush=True)
+            visible("Account sign-in is awaiting configuration.", allow_scroll=True)
+            print("Hosted account sign-in is awaiting configuration", flush=True)
         except RuntimeError:
-            print("Company Portal fallback was not visible", flush=True)
+            print("The awaiting-configuration message was not visible", flush=True)
     finally:
         adb("shell", "rm", "-f", "/sdcard/onesa-qualification.xml")
