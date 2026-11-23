@@ -5,7 +5,7 @@ This product directory contains the Onesa Mobile hardware pilot and operations p
 ## Structure
 
 - Website: `onesa-mobile-frontend/web/`.
-- Public/customer UI and internal operations are distinct surfaces. `/account/` and `/internal/` are protected persistent workspaces; synthetic previews are isolated at `/#demo` and `/preview/internal/`.
+- Public/customer UI and internal operations are distinct surfaces. `/account/` and `/internal/` are protected persistent workspaces. The public customer preview is at `/#demo`. The internal preview route introduces the protected staff workspace in published builds and loads synthetic workflows only in local Vite development.
 - Native iPhone, iPad and Android app: `onesa-mobile-frontend/mobile/`, including real generated `ios/` and `android/` projects.
 - API: `onesa-mobile-backend/`.
 - Product decisions and research: `docs/`.

@@ -17,7 +17,7 @@ Use Node 24.22.1. Open `http://localhost:5173`. Start the backend on loopback po
 | `/account/` | Protected pilot application, support/replies, account requests, test PDFs and complete export |
 | `/internal/` | Staff MFA sign-in and permission-filtered hardware, readiness, customer support, test billing and audit workflows |
 | `/#demo` | Explicitly fictional customer preview, independent of authentication |
-| `/preview/internal/` | Preserved fictional company preview; browser-local changes have no business effect |
+| `/preview/internal/` | Hosted introduction to the protected staff workspace. Local Vite development serves the synthetic operations demo here. |
 
 The production workspaces use cookies, anti-CSRF tokens, server permissions, current revisions and retained per-payload retry keys. They show pending, empty, error and stale/conflict states without inventing network measurements or payment success. Collection cursors expose older records. Sensitive approval/refund failures require reauthentication when the API says the original proof is too old.
 

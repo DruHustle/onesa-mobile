@@ -16,7 +16,7 @@ flowchart TB
   DB --> Backup["Encrypted recovery archive"]
 ```
 
-The public website exposes no account records. `/account/` and `/internal/` load separate customer/staff components and require server authentication/authorization. `/#demo` and `/preview/internal/` are isolated fictional examples. Route separation is a product boundary; the API is the security boundary.
+The public website exposes no account records. `/account/` and `/internal/` load separate customer/staff components and require server authentication and authorization. `/#demo` contains fictional customer examples. The published `/preview/internal/` page links to staff sign-in; the synthetic operations console runs in local Vite development. The API enforces access to operational records.
 
 The lab gateway and API have a private container network, loopback host publication, restricted capabilities and one durable volume. The API has no provider egress. The web gateway also joins an ordinary ingress bridge so Docker can publish the loopback port; its upstream remains the private API. The production overlay requires a different volume, real HTTPS ingress, explicit identity/secrets and an approved deployment environment. [Runtime guide](../infra/runtime/README.md).
 
