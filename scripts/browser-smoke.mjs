@@ -150,6 +150,23 @@ try {
   }
   browser = await chromium.launch({headless:true, ...(process.env.MOBILE_BROWSER_EXECUTABLE ? {executablePath:process.env.MOBILE_BROWSER_EXECUTABLE} : {})});
 
+  const staffIntroContext = await context(), staffIntro = await staffIntroContext.newPage();
+  const staffIntroRequests = [];
+  staffIntro.on('request', request => {
+    const path = new URL(request.url()).pathname;
+    if (path.startsWith('/api/')) staffIntroRequests.push(path);
+  });
+  await staffIntro.goto(origin+'/preview/internal/');
+  await staffIntro.getByRole('heading', {name:'Onesa Mobile staff operations',level:1}).waitFor();
+  assert.deepEqual(staffIntroRequests, [], 'the introduction loads without an account API request');
+  assert.equal(await staffIntro.getByRole('navigation', {name:'Operations navigation'}).count(), 0);
+  assert.equal(await staffIntro.getByRole('button', {name:/reset demo|team & audit/}).count(), 0);
+  assert.equal((await staffIntro.request.get(origin+'/api/v1/ops/snapshot')).status(), 401);
+  await staffIntro.getByRole('link', {name:'Continue to staff sign-in'}).click();
+  await staffIntro.getByRole('form', {name:'Staff sign-in',exact:true}).waitFor();
+  await staffIntroContext.close();
+  record('the published operations preview shows the staff sign-in entry and no console or private data');
+
   const publicContext = await context(), publicPage = await publicContext.newPage();
   await publicPage.goto(origin+'/');
   await publicPage.getByRole('group', {name:'Connectivity paths'}).getByRole('button', {name:'Direct to satellite',exact:true}).click();
