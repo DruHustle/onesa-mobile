@@ -1,6 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSessionOperationScope, StaleWorkspaceOperationError } from './session-operations.mjs';
+import { browserLogoutDestination, createSessionOperationScope, StaleWorkspaceOperationError } from './session-operations.mjs';
+
+test('browser logout only follows the pinned managed endpoint with an exact Mobile return', () => {
+  const origin = 'https://mobile.onesa.eu';
+  const destination = new URL('https://auth.onesa.eu/oidc/logout');
+  destination.searchParams.set('client_id', 'synthetic_mobile_client');
+  destination.searchParams.set('post_logout_redirect_uri', origin + '/');
+  assert.equal(browserLogoutDestination(destination.href, origin), destination.href);
+  for (const value of [
+    undefined,
+    destination.href.replace('https:', 'http:'),
+    destination.href.replace('auth.onesa.eu', 'lookalike.example.test'),
+    destination.href.replace('/oidc/logout', '/v2/logout'),
+    destination.href.replace('mobile.onesa.eu', 'other.example.test'),
+    destination.href + '&id_token_hint=unwanted',
+    destination.href + '#login',
+  ]) assert.equal(browserLogoutDestination(value, origin), null);
+});
 
 function deferred() {
   let resolve, reject;

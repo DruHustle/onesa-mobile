@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
+import { loadConfigFromFile } from "vite";
 import unavailable from "../api/unavailable.mjs";
 
 import { accountRoutes, config as deployedConfiguration } from "../vercel.mjs";
@@ -97,6 +99,27 @@ test("only a configured production domain forwards account requests to its Mobil
     "https://onesa.eu.wrong.example", gateway + ":8443", gateway + "/api", gateway + "/?next=1",
     gateway + "/#test", "https://user@mobile-gateway.onesa.eu"]) {
     assert.throws(() => accountRoutes({ VERCEL_ENV: "production", MOBILE_ACCOUNT_GATEWAY_ORIGIN: invalid }));
+  }
+});
+
+test("the public build only checks status on a host with API routing", async (t) => {
+  const gateway = "https://mobile-gateway.onesa.eu";
+  const { VERCEL_ENV, MOBILE_ACCOUNT_GATEWAY_ORIGIN, ...env } = process.env;
+  t.mock.property(process, "env", env);
+  const configFile = fileURLToPath(new URL("../vite.config.ts", import.meta.url));
+  const scenarios = [
+    [undefined, undefined, ""],
+    ["preview", gateway, null],
+    ["production", undefined, null],
+    ["production", gateway, "mobile.onesa.eu"],
+  ];
+  for (const [target, origin, expected] of scenarios) {
+    if (target) env.VERCEL_ENV = target;
+    if (origin) env.MOBILE_ACCOUNT_GATEWAY_ORIGIN = origin;
+    const built = await loadConfigFromFile({ command: "build", mode: "production" }, configFile);
+    assert.equal(built.config.define.__MOBILE_STATUS_HOSTNAME__, JSON.stringify(expected));
+    delete env.VERCEL_ENV;
+    delete env.MOBILE_ACCOUNT_GATEWAY_ORIGIN;
   }
 });
 

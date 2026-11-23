@@ -10,8 +10,10 @@ services:
       CORS_ALLOWED_ORIGINS: '${MOBILE_PUBLIC_ORIGIN:?Set the approved HTTPS origin}'
       ONESA_ISSUER: '${MOBILE_ONESA_ISSUER:?Set the approved Onesa issuer}'
       ONESA_CLIENT_ID: '${MOBILE_ONESA_CLIENT_ID:?Set the registered Mobile client ID}'
+      ONESA_MOBILE_API_AUDIENCE: '${MOBILE_ONESA_API_AUDIENCE:-}'
       ONESA_CLIENT_SECRET_FILE: /run/secrets/onesa-client-secret
       AUTH_ENCRYPTION_KEY_FILE: /run/secrets/auth-encryption-key
+      ONESA_MOBILE_BROWSER_LOGOUT: '${MOBILE_ONESA_BROWSER_LOGOUT:-false}'
     volumes: !override
       - mobile-production-data:/app/var
     secrets:

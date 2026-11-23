@@ -2,7 +2,9 @@
 
 Date: **5 November 2026**. Scope: the persistent Onesa Mobile hardware-pilot and customer/staff control plane, its native clients, and the additive Company Portal identity integration. This is software qualification with synthetic records. It is not evidence of an operating mobile network or commissioned equipment.
 
-## Current hosted qualification — source `337142d`
+Look up current qualification and native compile runs by revision in the [standalone Onesa Mobile Actions history](https://github.com/DruHustle/onesa-mobile/actions). This record preserves earlier evidence from the retired monorepo.
+
+## Historical monorepo qualification — source `337142d`
 
 [Qualified application source](https://github.com/DruHustle/onesa-ug/commit/337142d97cf0b5478494c6b28a73c5fd75ae7383) passed **all six jobs** in [qualification run 42129021936](https://github.com/DruHustle/onesa-ug/actions/runs/42129021936) on `337142d`. Final job conclusions and bounded test/compiler output were inspected. This supersedes pending hosted statements from the local second-review checkpoint; historical receipts below remain tied to their own source.
 
@@ -27,7 +29,7 @@ The downloaded [browser artifact](https://github.com/DruHustle/onesa-ug/actions/
 
 The preceding run on `e30427c` failed because its trial-site locator also matched the test-asset hint. Its screenshots exposed compressed commissioning words/site badges. The next source `3e050bb` passed all six jobs; screenshot inspection then caught a mobile FAQ spacing issue and text-size overrides retained by the test harness. Both were corrected in `337142d`, whose complete run and ordinary-typography screenshots are recorded here. Failed or partial runs are not counted as passing evidence.
 
-### Current native compiler artifacts
+### Historical native compiler artifacts
 
 [Native compilation run 42126218304](https://github.com/DruHustle/onesa-ug/actions/runs/42126218304) passed both Android job `127590990208` and iOS job `127590990816` on source **`e30427cdfb727b62622916cad572eeef13983a63`**. The native application directory and native compile workflow have **no Git diff** between that source and `337142d`. Web/test/report follow-ups do not claim a newer native compilation.
 

@@ -36,7 +36,7 @@ Use the quantities and selection criteria in the [hardware runbook](HARDWARE_PIL
 
 The L009UiGS-RM has eight Gigabit Ethernet ports, a console connection and passive PoE output on Ether8. Its published power figures distinguish attached loads from the router alone. Those are model specifications, not measured pilot consumption or a universal AP power supply. Keep passive output disabled until the exact powered device and supply have been checked. [Manufacturer specification](https://mikrotik.com/product/l009uigs_rm).
 
-Do not use an existing PamoFi router, terminal, production port, IP range or customer link without inventory and an explicit allocation. No such reuse has been established here. No vendor quotation, currency conversion, import total or commercial launch budget has been verified.
+Do not use an existing PasoFi router, terminal, production port, IP range or customer link without inventory and an explicit allocation. No such reuse has been established here. No vendor quotation, currency conversion, import total or commercial launch budget has been verified.
 
 ## 3. Numbered wiring plan
 

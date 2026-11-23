@@ -162,12 +162,18 @@ set +a
 `compose.production.yaml` is an overlay to review and qualify, not evidence of a hosted production service. It switches to a separate `mobile-production-data` volume and requires:
 
 - `MOBILE_PUBLIC_ORIGIN`: approved HTTPS origin.
-- `MOBILE_ONESA_ISSUER`: approved issuer ending `/api/v1/identity`.
+- `MOBILE_ONESA_ISSUER=https://auth.onesa.eu/` for the managed Onesa client, including its trailing slash.
+- `MOBILE_ONESA_API_AUDIENCE=https://api.mobile.onesa.eu` for the managed Mobile resource. The audience is an OAuth identifier. Set the gateway HTTPS origin separately for the Vercel rewrite.
 - `MOBILE_ONESA_CLIENT_ID`: registered Mobile confidential-client identifier.
 - `MOBILE_ONESA_SECRET_FILE`: protected client-secret file.
 - `MOBILE_AUTH_KEY_FILE`: protected 64-hex-character authentication encryption key file.
+- `MOBILE_ONESA_BROWSER_LOGOUT`: optional and off by default. Enable only with
+  the managed Auth0 issuer and audience configured and the exact Mobile public
+  landing page (with its trailing slash) approved as the client's logout URL.
 
 The container entrypoint reads only the two explicit secret-file inputs and refuses an ambiguous file/value pair. Never pass secrets in frontend variables or build arguments. The production configuration refuses missing central identity, missing encryption key, HTTP origins and an existing database with lab identities. The configuration does not turn on commercial service.
+
+Existing legacy Portal installations can keep their approved issuer ending in `/api/v1/identity` with `MOBILE_ONESA_API_AUDIENCE` unset. For the managed client, register the exact `https://mobile.onesa.eu/api/v1/auth/onesa/callback` and verify the authorization redirect uses `S256` before connecting public traffic.
 
 An approved TLS ingress must terminate HTTPS, enforce host routing and set transport-security policy before forwarding to the loopback web port. If another proxy is introduced, qualify its real-client-IP handling and update exact proxy trust accordingly; the gateway currently records its direct peer as the client. Do not trust an incoming public forwarding header. The production network permits egress for the identity provider; host-level egress controls, monitoring and alerting must be explicitly deployed.
 
@@ -193,7 +199,7 @@ The web gateway joins both `ingress` and the internal `private` network. Docker 
 
 The container smoke script refuses any project name outside `onesa-mobile-ci-*`, creates only synthetic records and never prints or uploads its generated credentials or database. CI cleanup removes only that disposable project. Native compilation runs automatically for scoped changes and can also be dispatched manually. GitHub documents the selected standard Ubuntu and macOS runners as free for public repositories; this is the verified public repository's configuration. The workflow does not purchase larger runners, upload release keys or publish apps.
 
-The first release's six recovery tests passed locally and on hosted CI. Its application source `3af4282` passed [qualification run 42080127807](https://github.com/DruHustle/onesa-ug/actions/runs/42080127807), including actual container build/start/restart/recovery and 35 Portal tests against disposable PostgreSQL. The second review adds explicit recovery source selection and browser journeys: eight recovery/entrypoint tests pass locally, with the actual Compose merge test skipped because Docker is absent. Local Chromium launch was denied a required operating-system socket before it opened a page; browser results and screenshots must come from the new hosted job. The new runtime and browser gates now pass in [qualification run 42129021936](https://github.com/DruHustle/onesa-ug/actions/runs/42129021936) on `337142d`: **9 recovery tests with no skips**, actual container persistence/recovery, and **20 browser groups / 31 layout observations**. The earlier run is retained only as history. Docker and Apple/Android native toolchains are unavailable in the editing environment. See [VALIDATION.md](../../docs/VALIDATION.md) for the exact source, tested image IDs, native compilation/artifact receipts and physical acceptance boundaries.
+Use the [standalone Onesa Mobile Actions runs](https://github.com/DruHustle/onesa-mobile/actions) to qualify an exact current revision. The [validation record](../../docs/VALIDATION.md) preserves the retired monorepo's source revisions, tested image IDs, browser results and native compiler receipts.
 
 ## Primary implementation references
 

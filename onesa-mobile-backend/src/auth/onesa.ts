@@ -56,6 +56,10 @@ export function validateOnesaConfig(config: OnesaConfig, publicOrigin: string): 
       redirect.pathname !== "/api/v1/auth/onesa/callback") {
     throw new Error("Onesa identity configuration rejected.");
   }
+  if (config.browserLogout && (!config.audience ||
+      (publicOrigin === "https://mobile.onesa.eu" && config.issuer !== "https://auth.onesa.eu/"))) {
+    throw new Error("Onesa browser logout requires the managed Auth0 Mobile issuer.");
+  }
 }
 async function bounded(response: Response): Promise<Response> {
   if (response.status >= 300 && response.status < 400) throw new AuthError(503, "AUTH_PROVIDER_REDIRECT");
@@ -85,6 +89,13 @@ export class OnesaIdentity {
       if(!db) throw new Error("Managed Mobile access needs the product key cache.");
       this.managed=new ManagedAccess(config,db,async()=>bounded(await fetch(config.issuer+".well-known/jwks.json",{redirect:"error",signal:AbortSignal.timeout(5000)})));
     }
+  }
+  browserLogoutUrl(publicOrigin: string): string | undefined {
+    if (!this.config.browserLogout || !this.managed) return undefined;
+    const url = new URL("oidc/logout", this.config.issuer);
+    url.searchParams.set("client_id", this.config.clientId);
+    url.searchParams.set("post_logout_redirect_uri", new URL("/", publicOrigin).href);
+    return url.href;
   }
   private endpoint(legacy:string,managed:string) {
     return this.config.audience ? new URL(managed,this.config.issuer).href : this.config.issuer+legacy;

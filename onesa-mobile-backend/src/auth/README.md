@@ -86,7 +86,12 @@ Fresh sensitive actions use `requireFresh`, not a newly minted session timestamp
 - Route logout **before live authentication** through `logoutPresented`, passing
   presented headers and local Origin/CSRF. It only destroys a local capability,
   cannot grant business access, and remains available during issuer outages.
-  Report `centralRevocation` honestly; local sign-out is not global Onesa logout.
+  In managed Auth0 mode, `ONESA_MOBILE_BROWSER_LOGOUT=true` lets a successful
+  browser logout continue to the provider after the local session is deleted.
+  Allow the exact Mobile public landing URL (including the trailing slash) in
+  that Auth0 application's Allowed Logout URLs before enabling this option.
+  The browser handoff uses the configured issuer's `/oidc/logout` endpoint.
+  Provider completion is separate from local and legacy token revocation.
 - Use `publicSession` for responses; never serialize a raw session row, flow,
   password hash, authenticator seed, encryption key or upstream token.
 
