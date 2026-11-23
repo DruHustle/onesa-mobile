@@ -141,6 +141,8 @@ function Balance({ compact = false }: { compact?: boolean }) {
   );
 }
 
+declare const __MOBILE_STATUS_HOSTNAME__: string | null;
+
 export default function App() {
   const [screen, setScreen] = useState<"explore" | "demo">(() =>
     window.location.hash === "#demo" ? "demo" : "explore",
@@ -148,10 +150,14 @@ export default function App() {
   const [demoTab, setDemoTab] = useState<DemoTab>("Overview");
   const [selectedPlan, setSelectedPlan] = useState<PlanId>("everyday");
   const [path, setPath] = useState<PathId>("mobile");
+  const canCheckStatus = __MOBILE_STATUS_HOSTNAME__ === "" ||
+    __MOBILE_STATUS_HOSTNAME__ === window.location.hostname;
   const [apiStatus, setApiStatus] = useState(
-    "Checking account availability…",
+    canCheckStatus
+      ? "Checking account availability…"
+      : "Account and staff services are not available through this website yet.",
   );
-  const [checking, setChecking] = useState(true);
+  const [checking, setChecking] = useState(canCheckStatus);
   const [interestOpen, setInterestOpen] = useState(false);
   const [statusCheck, setStatusCheck] = useState(0);
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -178,6 +184,7 @@ export default function App() {
     navigate("demo", "My plan");
   }
   useEffect(() => {
+    if (!canCheckStatus) return;
     const controller = new AbortController();
     const timer = window.setTimeout(() => controller.abort(), 5000);
     let current = true;
@@ -213,7 +220,7 @@ export default function App() {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [statusCheck]);
+  }, [canCheckStatus, statusCheck]);
 
   return (
     <>
@@ -737,14 +744,16 @@ export default function App() {
                       <p role="status" aria-live="polite">
                         {apiStatus}
                       </p>
-                      <button
-                        className="button light"
-                        disabled={checking}
-                        aria-busy={checking}
-                        onClick={() => setStatusCheck(n => n + 1)}
-                      >
-                        {checking ? "Checking…" : "Check service status"}
-                      </button>
+                      {canCheckStatus && (
+                        <button
+                          className="button light"
+                          disabled={checking}
+                          aria-busy={checking}
+                          onClick={() => setStatusCheck(n => n + 1)}
+                        >
+                          {checking ? "Checking…" : "Check service status"}
+                        </button>
+                      )}
                     </div>
                     <p className="muted">
                       Satellite attachment is controlled by the device and
