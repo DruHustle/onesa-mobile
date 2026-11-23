@@ -222,7 +222,7 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
     registrationBrowser.current = opening;
     try {
       if(platform==='web'){await Linking.openURL(url);return;}
-      await SecureStore.setItemAsync("onesa.mobile.registration",JSON.stringify({tab,expires:Date.now()+30*60*1000}));
+      await SecureStore.setItemAsync("onesa.mobile.registration",JSON.stringify({audience,tab,expires:Date.now()+30*60*1000}));
       const result=await WebBrowser.openAuthSessionAsync(url,registrationReturn);
       if (result.type === "success" && result.url === registrationReturn) opening.returned = true;
     } catch {
@@ -231,10 +231,6 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
       registrationBrowser.current = null;
       if (opening.returned) setReturnedFromRegistration(true);
     }
-  }
-  function openPortal() {
-    const url = "https://portal.onesa.eu/admin";
-    void Linking.openURL(url).catch(() => setNotice("Open " + url + " in your browser."));
   }
   const resetPrivateState = useCallback(() => {
     accountReads.invalidate();
@@ -749,9 +745,14 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
       const value=JSON.parse(raw);
       if(!active)return;
       await SecureStore.deleteItemAsync("onesa.mobile.registration");
-      if(!active || !tabs.includes(value.tab) || !Number.isFinite(value.expires) || value.expires<Date.now())return;
+      if(!active || !tabs.includes(value.tab) || !Number.isSafeInteger(value.expires) || value.expires<Date.now())return;
       setReturnedFromRegistration(false);
       setTab(value.tab);
+      if (value.audience === "admin") {
+        setNotice("Administrator requests require approval. You can continue using the app.");
+        return;
+      }
+      if (value.audience !== undefined && value.audience !== "user") return;
       if(storageKey && authMode==='onesa' && ssoAvailable && !credential)void signInOnesa(value.tab);
     }).catch(()=>{if(active)setNotice('Return to your account and choose Sign in with Onesa.');});
     return ()=>{active=false;};
@@ -1096,11 +1097,6 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
                   {!ssoAvailable ? (
                     <Text style={styles.small}>Account sign-in is awaiting configuration.</Text>
                   ) : null}
-                </>
-              )}
-              {(discoveryUnavailable || !base || (!loading && authMode !== "lab" && !ssoAvailable)) && (
-                <>
-                  <Button secondary onPress={() => openPortal()}>Sign in to Company Portal</Button>
                 </>
               )}
               {(!base || discoveryUnavailable || (!loading && authMode !== "lab")) && (

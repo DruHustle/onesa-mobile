@@ -46,21 +46,29 @@ const staffSections: Section[] = [
   {key:'audit',label:'Audit trail',description:'Recorded actions and audit-chain consistency.',permission:'audit.read'},
 ];
 const registrationKey = 'onesa.mobile.registration';
+const registrationLifetime = 30 * 60 * 1000;
 function registrationSection(surface:Surface, section:string) {
   return (surface === 'staff' ? staffSections : customerSections).some(item => item.key === section) ? section : 'home';
 }
 function rememberRegistration(surface:Surface) {
-  try { sessionStorage.setItem(registrationKey, JSON.stringify({surface,section:registrationSection(surface,location.hash.slice(1))})); } catch {}
+  const receipt = JSON.stringify({surface, section:registrationSection(surface,location.hash.slice(1)), expires:Date.now()+registrationLifetime});
+  if (surface === 'customer') {
+    // The verification email can return through another tab on this browser.
+    try { localStorage.setItem(registrationKey, receipt); return; } catch {}
+  }
+  try { sessionStorage.setItem(registrationKey, receipt); } catch {}
 }
-function registrationReturned() {
-  if (location.pathname !== '/account/' || location.search !== '?registration=complete') return null;
+function takeRegistration(storage: 'sessionStorage' | 'localStorage') {
   try {
-    const raw=sessionStorage.getItem(registrationKey);
-    sessionStorage.removeItem(registrationKey);
+    const raw=window[storage].getItem(registrationKey);
+    window[storage].removeItem(registrationKey);
     if (!raw) return null;
     const value=JSON.parse(raw);
-    if(value.surface!=='staff' && value.surface!=='customer') return null;
-    return {surface:value.surface as Surface,section:registrationSection(value.surface,value.section)};
+    if (value.surface !== 'customer' && (value.surface !== 'staff' || storage === 'localStorage')) return null;
+    const legacy = storage === 'sessionStorage' && value.expires === undefined;
+    const now = Date.now();
+    if (!legacy && (!Number.isSafeInteger(value.expires) || value.expires < now || value.expires > now+registrationLifetime)) return null;
+    return {surface:value.surface as Surface, section:registrationSection(value.surface,value.section)};
   } catch { return null; }
 }
 const roleNames = ['admin','operations','support','finance','agent','auditor','customer'];
@@ -88,9 +96,12 @@ export default function WorkspaceApp({surface}:{surface:Surface}) {
   const operationScope=useRef(createSessionOperationScope());
 
   useEffect(()=>{
-    if(refreshing)return;
-    const returned=registrationReturned();
-    if(!returned)return;
+    if(refreshing || location.pathname !== '/account/' || location.search !== '?registration=complete')return;
+    const returned=takeRegistration('sessionStorage') ?? takeRegistration('localStorage');
+    if(!returned){
+      history.replaceState(null,'',location.pathname+location.hash);
+      return;
+    }
     const {surface:origin,section:screen}=returned;
     const local=(origin==='staff'?'/internal/':'/account/')+'#'+screen;
     if(session?.ssoAvailable && !session.authenticated){
