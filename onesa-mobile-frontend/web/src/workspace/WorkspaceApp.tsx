@@ -6,7 +6,7 @@ import { CustomerAccount, CustomerApplication, CustomerHelp, CustomerHome, Custo
 import { Hardware, Trials } from './Hardware';
 import { Applications, Audit, Billing, ReadinessWorkspace, StaffHome, Support } from './Staff';
 import { createSessionDownloadScope, humanize, makeRetryKeys, mergeRecordPage, releaseRetryKeyAfterRefresh } from './helpers.mjs';
-import { createSessionOperationScope, StaleWorkspaceOperationError } from './session-operations.mjs';
+import { browserLogoutDestination, createSessionOperationScope, StaleWorkspaceOperationError } from './session-operations.mjs';
 import type { Collection, CustomerData, Item, Session, StaffData, Surface, WorkspaceContext } from './types';
 import './workspace.css';
 
@@ -232,10 +232,14 @@ export default function WorkspaceApp({surface}:{surface:Surface}) {
     downloadScope.current.invalidate();
     operationInProgress.current=true;setBusy(true);setPageError(null);
     try {
-      const result=await api<{signedOut:boolean;centralRevocation:string}>('/v1/session/logout',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':sessionRef.current?.csrfToken??''},body:'{}'});
+      const result=await api<{signedOut:boolean;centralRevocation:string;browserLogoutUrl?:string}>('/v1/session/logout',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':sessionRef.current?.csrfToken??''},body:'{}'});
+      if(result?.signedOut!==true)throw new ApiError(0,'RESPONSE_UNREADABLE','The sign-out response could not be read.');
       controller.current?.abort();for(const pending of pageControllers.current.values())pending.abort();pageControllers.current.clear();setLoadingPages({});requestSequence.current++;setRefreshing(false);
       const known=sessionRef.current;if(known)acceptSession({...known,authenticated:false,user:null,csrfToken:null});
-      setStale(false);setNotice(result.centralRevocation==='unavailable'?'You are signed out of Onesa Mobile. Central Onesa sign-out could not be confirmed.':'You are signed out of Onesa Mobile.');
+      setStale(false);
+      const destination=browserLogoutDestination(result.browserLogoutUrl,window.location.origin);
+      if(destination){window.location.replace(destination);return;}
+      setNotice(result.centralRevocation==='unavailable'?'You are signed out of Onesa Mobile. Central Onesa sign-out could not be confirmed.':'You are signed out of Onesa Mobile.');
     } catch(error) {
       if(error instanceof ApiError&&error.status===401)expireSession();
       else setPageError('Sign-out could not be confirmed. Keep this page open and retry. '+errorMessage(error));

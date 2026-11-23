@@ -166,6 +166,9 @@ set +a
 - `MOBILE_ONESA_CLIENT_ID`: registered Mobile confidential-client identifier.
 - `MOBILE_ONESA_SECRET_FILE`: protected client-secret file.
 - `MOBILE_AUTH_KEY_FILE`: protected 64-hex-character authentication encryption key file.
+- `MOBILE_ONESA_BROWSER_LOGOUT`: optional and off by default. Enable only with
+  the managed Auth0 issuer and audience configured and the exact Mobile public
+  landing page (with its trailing slash) approved as the client's logout URL.
 
 The container entrypoint reads only the two explicit secret-file inputs and refuses an ambiguous file/value pair. Never pass secrets in frontend variables or build arguments. The production configuration refuses missing central identity, missing encryption key, HTTP origins and an existing database with lab identities. The configuration does not turn on commercial service.
 

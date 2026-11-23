@@ -61,7 +61,7 @@ test("managed Mobile web callback returns to its section, retains the stable acc
     allowedOrigins: [origin],
     encryptionKey: randomBytes(32).toString("hex"),
     databasePath: join(root, "accounts.sqlite"),
-    onesa: config,
+    onesa: { ...config, browserLogout: true },
   };
   let auth = new AuthService(options),
     online = true,
@@ -176,16 +176,25 @@ test("managed Mobile web callback returns to its section, retains the stable acc
       auth.beginOnesa({ surface: "staff" }),
       (e: unknown) => (e as { status: number }).status === 503,
     );
-    assert.equal(
-      (await auth.logout(session!)).centralRevocation,
-      "not_applicable",
-    );
-    assert.equal(
-      await auth.authenticate({
-        cookie: "__Host-onesa_mobile_session=" + result.token,
-      }),
-      null,
-    );
+    const presented = { cookie: "__Host-onesa_mobile_session=" + result.token };
+    await assert.rejects(auth.logoutPresented(presented, { origin }), { code: "CSRF_INVALID" });
+    assert.equal((await auth.authenticate(presented))?.subject, uid);
+    const signedOut = await auth.logoutPresented(presented, {
+      origin,
+      csrfToken: session?.csrfToken,
+    });
+    assert.equal(signedOut.centralRevocation, "not_applicable");
+    const browserLogout = new URL(signedOut.browserLogoutUrl!);
+    assert.equal(browserLogout.origin + browserLogout.pathname, issuer + "oidc/logout");
+    assert.deepEqual(Object.fromEntries(browserLogout.searchParams), {
+      client_id: config.clientId,
+      post_logout_redirect_uri: origin + "/",
+    });
+    assert.equal(await auth.authenticate(presented), null);
+    assert.deepEqual(await auth.logoutPresented(presented, { origin }), { centralRevocation: "not_applicable" });
+    assert.deepEqual(await auth.logoutPresented({ authorization: "Bearer " + nativeSession.token }, {}), {
+      centralRevocation: "not_applicable",
+    });
   } finally {
     globalThis.fetch = original;
     auth.close();

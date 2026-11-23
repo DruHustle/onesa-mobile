@@ -723,6 +723,8 @@ test("runtime configuration refuses partial identity, weak keys and wildcard tru
     /64 hex/,
   );
   assert.throws(() => loadPlatformConfig({ TRUST_PROXY_IPS: "*" }), /exact IP/);
+  assert.throws(() => loadPlatformConfig({ ONESA_MOBILE_BROWSER_LOGOUT: "1" }), /true or false/);
+  assert.throws(() => loadPlatformConfig({ ONESA_MOBILE_BROWSER_LOGOUT: "true" }), /managed Auth0/);
   assert.equal(loadPlatformConfig({}).mode, "lab");
 });
 
