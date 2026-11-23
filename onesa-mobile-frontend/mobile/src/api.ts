@@ -123,6 +123,25 @@ export function callbackParameters(
     throw Error("This sign-in does not match the request on this device.");
   return { code, state };
 }
+
+/** Linking may deliver the authorization result before the browser closes. */
+export function collectNativeBrowserReturn(expectedState: string) {
+  let linked: string | undefined;
+  return {
+    receive(url: string) {
+      try {
+        callbackParameters(url, expectedState);
+        linked ??= url;
+      } catch {
+        // A link for a different attempt must leave the current flow pending.
+      }
+    },
+    resolve(browserUrl?: string) {
+      return linked ?? browserUrl;
+    },
+  };
+}
+
 export function compactCache(account: Account): object {
   return {
     subject: account.profile.subject,

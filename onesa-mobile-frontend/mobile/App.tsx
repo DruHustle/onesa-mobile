@@ -41,6 +41,7 @@ import {
   ApiError,
   base64Url,
   callbackParameters,
+  collectNativeBrowserReturn,
   compactCache,
   request,
   type Account,
@@ -201,6 +202,7 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
   const current = useRef<Credential | null>(null),
     requestKeys = useRef(new Map<string, string>()),
     callbackCodes = useRef(new Set<string>()),
+    nativeBrowserReturn = useRef<ReturnType<typeof collectNativeBrowserReturn> | null>(null),
     actionLock = useRef<symbol | null>(null),
     cleanupPending = useRef(false),
     cleanupFlight = useRef<Promise<SessionOperation> | null>(null),
@@ -211,15 +213,24 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
   const base = configuration.base;
   const [returnedFromRegistration,setReturnedFromRegistration]=useState(false);
   const registrationReturn="onesamobile://auth/registered";
+  const registrationBrowser = useRef<{ returned: boolean } | null>(null);
   async function register(audience:"user"|"admin") {
+    if (registrationBrowser.current) return;
     const platform=Platform.OS==='ios'?'ios':Platform.OS==='android'?'android':'web';
     const url="https://account.onesa.eu/register?audience="+audience+"&product=mobile&platform="+platform;
+    const opening = { returned: false };
+    registrationBrowser.current = opening;
     try {
       if(platform==='web'){await Linking.openURL(url);return;}
       await SecureStore.setItemAsync("onesa.mobile.registration",JSON.stringify({tab,expires:Date.now()+30*60*1000}));
       const result=await WebBrowser.openAuthSessionAsync(url,registrationReturn);
-      if(result.type==='success' && result.url===registrationReturn)setReturnedFromRegistration(true);
-    } catch { setNotice("Registration could not open. Try again from this device."); }
+      if (result.type === "success" && result.url === registrationReturn) opening.returned = true;
+    } catch {
+      setNotice("Registration could not open. Try again from this device.");
+    } finally {
+      registrationBrowser.current = null;
+      if (opening.returned) setReturnedFromRegistration(true);
+    }
   }
   function openPortal() {
     const url = "https://portal.onesa.eu/admin";
@@ -625,8 +636,10 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
     if (!storageKey || (publicApi && (authMode !== "onesa" || !ssoAvailable))) return;
     let listening = true;
     const handler = ({ url }: { url: string }) => {
-      if (listening && url.startsWith("onesamobile://auth/callback"))
-        void run((operation) => completeNative(url, operation));
+      if (!listening || !url.startsWith("onesamobile://auth/callback")) return;
+      const pending = nativeBrowserReturn.current;
+      if (pending) pending.receive(url);
+      else void run((operation) => completeNative(url, operation));
     };
     const listener = Linking.addEventListener("url", handler);
     void Linking.getInitialURL().then((url) => {
@@ -658,8 +671,13 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
       );
       await saveCredential(result, operation);
     });
-  const signInOnesa = (destination?:Tab) =>
-    run(async (operation) => {
+  const signInOnesa = async (destination?: Tab) => {
+    const browser: {
+      capture?: ReturnType<typeof collectNativeBrowserReturn>;
+      operation?: SessionOperation;
+      result?: Awaited<ReturnType<typeof WebBrowser.openAuthSessionAsync>>;
+    } = {};
+    await run(async (operation) => {
       if (!base || !storageKey) return;
       const state = base64Url(
           await inSession(operation, () => Crypto.getRandomBytesAsync(32)),
@@ -689,22 +707,36 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
       url.searchParams.set("surface", "customer");
       url.searchParams.set("codeChallenge", challenge);
       url.searchParams.set("state", state);
-      const result = await inSession(operation, () =>
+      browser.capture = collectNativeBrowserReturn(state);
+      browser.operation = operation;
+      nativeBrowserReturn.current = browser.capture;
+      browser.result = await inSession(operation, () =>
         WebBrowser.openAuthSessionAsync(
           url.href,
           "onesamobile://auth/callback",
         ),
       );
-      if (result.type === "success")
-        await completeNative(result.url, operation);
-      else {
-        await privateStorage.clear([storageKey + ".flow"], operation);
-        operation.assertCurrent();
-        setNotice("Sign-in cancelled. No account change was made.");
-      }
     });
+    // Process a captured return after the browser operation releases the action lock.
+    const pending = browser.capture;
+    if (!pending) return;
+    try {
+      if (!browser.operation?.isCurrent()) return;
+      const returned = pending.resolve(
+        browser.result?.type === "success" ? browser.result.url : undefined,
+      );
+      if (returned) await run((operation) => completeNative(returned, operation));
+      else if (browser.result) setNotice("The sign-in window closed. You can start another sign-in here.");
+    } finally {
+      if (nativeBrowserReturn.current === pending) nativeBrowserReturn.current = null;
+    }
+  };
   useEffect(()=>{
-    const receive=(url:string|null|undefined)=>{if(url===registrationReturn)setReturnedFromRegistration(true);};
+    const receive = (url: string | null | undefined) => {
+      if (url !== registrationReturn) return;
+      if (registrationBrowser.current) registrationBrowser.current.returned = true;
+      else setReturnedFromRegistration(true);
+    };
     const listener=Linking.addEventListener('url',({url})=>receive(url));
     void Linking.getInitialURL().then(receive).catch(()=>{});
     return ()=>listener.remove();

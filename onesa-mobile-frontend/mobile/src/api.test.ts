@@ -4,6 +4,7 @@ import {
   apiBase,
   base64Url,
   callbackParameters,
+  collectNativeBrowserReturn,
   compactCache,
   request,
 } from "./api.ts";
@@ -46,6 +47,19 @@ test("native sign-in validates exact callback, random state and single code", ()
     const bytes = Uint8Array.from({ length: n }, (_, i) => i);
     assert.equal(base64Url(bytes), Buffer.from(bytes).toString("base64url"));
   }
+});
+test("native sign-in keeps the matching deep link while a closing browser owns the action lock", () => {
+  const state = "s".repeat(43);
+  const code = "c".repeat(43);
+  const callback = `onesamobile://auth/callback?state=${state}&code=${code}`;
+  const capture = collectNativeBrowserReturn(state);
+  capture.receive(callback.replace(state, "unrelated"));
+  assert.equal(capture.resolve(), undefined);
+  capture.receive(callback);
+  capture.receive(callback.replace(code, "different"));
+  assert.equal(capture.resolve(), callback);
+  assert.equal(capture.resolve(callback), callback);
+  assert.equal(collectNativeBrowserReturn(state).resolve(callback), callback);
 });
 test("offline cache excludes support text, payments and account secrets", () => {
   const cached = compactCache({
