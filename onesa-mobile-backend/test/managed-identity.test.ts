@@ -192,7 +192,8 @@ test("managed Mobile web callback returns to its section, retains the stable acc
     rmSync(root, { recursive: true, force: true });
   }
 });
-test("managed Mobile checks its dedicated audience, stable subject, factor proof, expiry and requested surface", async () => {
+test("managed Mobile checks its dedicated audience, stable subject, factor proof, expiry and requested surface", async t => {
+  t.mock.timers.enable({ apis: ["Date"], now: Date.now() });
   const db = new DatabaseSync(":memory:");
   try {
     const service = new ManagedAccess(config, db, async () =>
