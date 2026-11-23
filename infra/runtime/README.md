@@ -162,12 +162,15 @@ set +a
 `compose.production.yaml` is an overlay to review and qualify, not evidence of a hosted production service. It switches to a separate `mobile-production-data` volume and requires:
 
 - `MOBILE_PUBLIC_ORIGIN`: approved HTTPS origin.
-- `MOBILE_ONESA_ISSUER`: approved issuer ending `/api/v1/identity`.
+- `MOBILE_ONESA_ISSUER=https://auth.onesa.eu/` for the managed Onesa client, including its trailing slash.
+- `MOBILE_ONESA_API_AUDIENCE=https://api.mobile.onesa.eu` for the managed Mobile resource. The audience is an OAuth identifier. Set the gateway HTTPS origin separately for the Vercel rewrite.
 - `MOBILE_ONESA_CLIENT_ID`: registered Mobile confidential-client identifier.
 - `MOBILE_ONESA_SECRET_FILE`: protected client-secret file.
 - `MOBILE_AUTH_KEY_FILE`: protected 64-hex-character authentication encryption key file.
 
 The container entrypoint reads only the two explicit secret-file inputs and refuses an ambiguous file/value pair. Never pass secrets in frontend variables or build arguments. The production configuration refuses missing central identity, missing encryption key, HTTP origins and an existing database with lab identities. The configuration does not turn on commercial service.
+
+Existing legacy Portal installations can keep their approved issuer ending in `/api/v1/identity` with `MOBILE_ONESA_API_AUDIENCE` unset. For the managed client, register the exact `https://mobile.onesa.eu/api/v1/auth/onesa/callback` and verify the authorization redirect uses `S256` before connecting public traffic.
 
 An approved TLS ingress must terminate HTTPS, enforce host routing and set transport-security policy before forwarding to the loopback web port. If another proxy is introduced, qualify its real-client-IP handling and update exact proxy trust accordingly; the gateway currently records its direct peer as the client. Do not trust an incoming public forwarding header. The production network permits egress for the identity provider; host-level egress controls, monitoring and alerting must be explicitly deployed.
 

@@ -33,11 +33,12 @@ test('actual Compose merge binds the explicitly selected existing volume and ref
   try {
     const keyPath = join(dir, 'synthetic.key');
     writeFileSync(keyPath, '0'.repeat(64), {mode: 0o600});
-    function config(mode, selectVolume = true) {
+    function config(mode, selectVolume = true, overrides = {}) {
       const env = {...process.env, MOBILE_RECOVERY_MODE: mode, MOBILE_RECOVERY_DIRECTORY: dir, MOBILE_RECOVERY_KEY_FILE: keyPath,
         MOBILE_API_IMAGE: 'sha256:' + 'a'.repeat(64), MOBILE_GATEWAY_IMAGE: 'sha256:' + 'b'.repeat(64),
         MOBILE_PUBLIC_ORIGIN: 'https://mobile.example.test', MOBILE_ONESA_ISSUER: 'https://identity.example.test/api/v1/identity',
-        MOBILE_ONESA_CLIENT_ID: 'synthetic-client-reference', MOBILE_ONESA_SECRET_FILE: keyPath, MOBILE_AUTH_KEY_FILE: keyPath};
+        MOBILE_ONESA_API_AUDIENCE: '', MOBILE_ONESA_CLIENT_ID: 'synthetic-client-reference',
+        MOBILE_ONESA_SECRET_FILE: keyPath, MOBILE_AUTH_KEY_FILE: keyPath, ...overrides};
       delete env.MOBILE_RECOVERY_VOLUME;
       if (selectVolume) env.MOBILE_RECOVERY_VOLUME = 'synthetic-existing-' + mode + '-volume';
       const args = ['compose', '-p', 'onesa-mobile-ci-config', '-f', 'infra/runtime/compose.lab.yaml',
@@ -62,5 +63,16 @@ test('actual Compose merge binds the explicitly selected existing volume and ref
       assert.equal(value.services.recovery.network_mode, 'none');
       assert.notEqual(config(mode, false).status, 0, 'No lab-volume default is allowed when selection is missing');
     }
+    const managed = config('production', true, {
+      MOBILE_ONESA_ISSUER: 'https://auth.onesa.eu/',
+      MOBILE_ONESA_API_AUDIENCE: 'https://api.mobile.onesa.eu',
+    });
+    assert.equal(managed.status, 0);
+    const managedEnvironment = JSON.parse(managed.stdout).services.api.environment;
+    assert.equal(managedEnvironment.ONESA_ISSUER, 'https://auth.onesa.eu/');
+    assert.equal(managedEnvironment.ONESA_MOBILE_API_AUDIENCE, 'https://api.mobile.onesa.eu');
+    const legacyEnvironment = JSON.parse(config('production').stdout).services.api.environment;
+    assert.equal(legacyEnvironment.ONESA_ISSUER, 'https://identity.example.test/api/v1/identity');
+    assert.equal(legacyEnvironment.ONESA_MOBILE_API_AUDIENCE, '');
   } finally { rmSync(dir, {recursive: true, force: true}); }
 });
