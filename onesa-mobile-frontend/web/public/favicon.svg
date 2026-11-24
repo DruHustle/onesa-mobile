@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <title>Onesa Mobile</title>
+  <!-- The existing ascending signal bars and colours from src/styles.css. -->
+  <rect width="64" height="64" rx="14" fill="#103c35"/>
+  <g transform="translate(20 17) skewX(-12)" fill="#c7f5b5">
+    <rect x="0" y="17" width="8" height="13" rx="3"/>
+    <rect x="11" y="7" width="8" height="23" rx="3"/>
+    <rect x="22" y="0" width="8" height="30" rx="3"/>
+  </g>
+</svg>

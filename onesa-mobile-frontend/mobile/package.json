@@ -1,0 +1,53 @@
+{
+  "name": "@onesa-mobile/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "prepare:ios": "test -f ios/.xcode.env || cp -n ios/.xcode.env.example ios/.xcode.env",
+    "preios": "npm run prepare:ios",
+    "ios": "expo run:ios",
+    "assets:build": "node scripts/build-brand-assets.mjs",
+    "prebuild": "expo prebuild --no-install",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test src/*.test.ts",
+    "export": "expo export --platform ios --platform android --output-dir dist",
+    "verify": "npm run typecheck && npm test && npm run export"
+  },
+  "dependencies": {
+    "expo": "58.0.23",
+    "expo-crypto": "~58.0.7",
+    "expo-file-system": "~58.0.13",
+    "expo-secure-store": "~58.0.2",
+    "expo-sharing": "~58.0.22",
+    "expo-splash-screen": "~58.0.13",
+    "expo-status-bar": "58.0.4",
+    "expo-system-ui": "~58.0.7",
+    "expo-web-browser": "~58.0.7",
+    "react": "19.3.0",
+    "react-native": "0.88.1",
+    "react-native-safe-area-context": "~5.11.1"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "sharp": "0.34.5",
+    "typescript": "6.0.3"
+  },
+  "engines": {
+    "node": ">=24.3.0 <25"
+  },
+  "overrides": {
+    "@expo/cli": {
+      "glob": "14.0.2"
+    },
+    "@expo/fingerprint": {
+      "glob": "14.0.2",
+      "minimatch": "11.0.1"
+    },
+    "glob@14.0.2": {
+      "minimatch": "11.0.1"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" data-background="#103C35">
+  <title>Onesa Mobile</title>
+  <desc>Three mint bars rising from left to right, tilted twelve degrees.</desc>
+  <g fill="#C7F5B5" transform="translate(20.188 17) skewX(-12)">
+    <rect x="0" y="17" width="8" height="13" rx="3" />
+    <rect x="11" y="7" width="8" height="23" rx="3" />
+    <rect x="22" y="0" width="8" height="30" rx="3" />
+  </g>
+</svg>

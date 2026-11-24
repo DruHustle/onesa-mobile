@@ -1,0 +1,65 @@
+{
+  "expo": {
+    "name": "Onesa Mobile Preview",
+    "slug": "onesa-mobile",
+    "version": "0.1.0",
+    "scheme": "onesamobile",
+    "icon": "./assets/icon.png",
+    "orientation": "default",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "eu.onesa.mobile.preview",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "eu.onesa.mobile.preview",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#103C35"
+      },
+      "permissions": [],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.VIBRATE"
+      ],
+      "allowBackup": false
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#103C35",
+          "image": "./assets/splash.png",
+          "imageWidth": 180,
+          "resizeMode": "contain"
+        }
+      ],
+      "./plugins/withPreviewSigning.cjs",
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": false
+        }
+      ],
+      "expo-web-browser",
+      "expo-sharing"
+    ],
+    "extra": {
+      "environment": "development-demo",
+      "liveServicesEnabled": false
+    },
+    "platforms": [
+      "ios",
+      "android"
+    ]
+  }
+}

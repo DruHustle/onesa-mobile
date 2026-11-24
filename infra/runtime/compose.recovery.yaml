@@ -1,0 +1,37 @@
+# Explicit maintenance helper. Never infer the source database from overlay order.
+# Set the existing data volume, lab/production mode, protected archive directory and key.
+services:
+  recovery:
+    profiles: [maintenance]
+    build:
+      context: ../..
+      dockerfile: infra/runtime/recovery.Dockerfile
+    image: onesa-mobile-recovery:lab
+    user: '1000:1000'
+    read_only: true
+    network_mode: none
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    pids_limit: 32
+    mem_limit: 256m
+    environment:
+      MOBILE_RECOVERY_MODE: '${MOBILE_RECOVERY_MODE:?Choose lab or production explicitly}'
+    volumes:
+      - recovery-source:/data
+      - type: bind
+        source: '${MOBILE_RECOVERY_DIRECTORY:?Set an absolute protected directory owned by UID 1000}'
+        target: /backups
+        bind:
+          create_host_path: false
+      - type: bind
+        source: '${MOBILE_RECOVERY_KEY_FILE:?Set an absolute protected recovery key file readable by UID 1000}'
+        target: /run/recovery.key
+        read_only: true
+        bind:
+          create_host_path: false
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m,mode=1777
+volumes:
+  recovery-source:
+    external: true
+    name: '${MOBILE_RECOVERY_VOLUME:?Set the exact existing Mobile data volume to recover}'

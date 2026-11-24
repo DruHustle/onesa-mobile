@@ -1,0 +1,73 @@
+name: onesa-mobile-lab
+services:
+  api:
+    build:
+      context: ../../onesa-mobile-backend
+    image: onesa-mobile-api:lab
+    init: true
+    user: '1000:1000'
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    restart: unless-stopped
+    stop_grace_period: 15s
+    pids_limit: 128
+    mem_limit: 512m
+    cpus: 1.0
+    environment:
+      APP_MODE: lab
+      HOST: 0.0.0.0
+      PORT: '4000'
+      PUBLIC_ORIGIN: '${MOBILE_LAB_ORIGIN:-http://localhost:8080}'
+      CORS_ALLOWED_ORIGINS: '${MOBILE_LAB_ORIGIN:-http://localhost:8080}'
+      DATABASE_PATH: /app/var/onesa-mobile.sqlite
+      TRUST_PROXY_IPS: '${MOBILE_LAB_PROXY_IP:-172.31.248.2}'
+    volumes:
+      - mobile-data:/app/var
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m,mode=1777
+    networks:
+      private:
+        ipv4_address: '${MOBILE_LAB_API_IP:-172.31.248.3}'
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:4000/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+  web:
+    build:
+      context: ../..
+      dockerfile: infra/runtime/web.Dockerfile
+    image: onesa-mobile-web:lab
+    init: true
+    user: '101:101'
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    restart: unless-stopped
+    pids_limit: 64
+    mem_limit: 128m
+    depends_on:
+      api:
+        condition: service_healthy
+        restart: true
+    ports:
+      - '127.0.0.1:${MOBILE_LAB_PORT:-8080}:8080'
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m,mode=1777
+    networks:
+      ingress: {}
+      private:
+        ipv4_address: '${MOBILE_LAB_PROXY_IP:-172.31.248.2}'
+networks:
+  # Docker publishes ports through a default-gateway network. Only the web
+  # gateway joins this ordinary bridge; the API remains internal-only.
+  ingress: {}
+  private:
+    internal: true
+    ipam:
+      config:
+        - subnet: '${MOBILE_LAB_SUBNET:-172.31.248.0/28}'
+volumes:
+  mobile-data:

@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.vercel/
+.validation/
+.env
+.env.*
+**/private/
+**/private-recovery/
+**/*.sqlite
+**/*.sqlite-*
+**/*.authkey
+**/*.omb
+**/*.key
+**/*-credentials.json
+**/*.log
