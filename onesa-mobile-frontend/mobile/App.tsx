@@ -76,6 +76,8 @@ const configuration = (() => {
   }
 })();
 const publicApi = isPublicAccountApi(configuration.base, __DEV__);
+const usesPublicMobileAccount = configuration.base === "https://mobile.onesa.eu/api" ||
+  configuration.base === "https://mobile.onesa.eu";
 const unavailableProductionAccount = "The customer account service is unavailable. Retry the connection later.";
 // This queue must outlive MobileAccount: preview navigation unmounts that component.
 const privateStorage = new SessionStorage({
@@ -1546,6 +1548,25 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
                   <Button secondary onPress={() => void signOut()}>
                     Sign out
                   </Button>
+                  {usesPublicMobileAccount && credential.user.source === "onesa" ? (
+                    <>
+                      <Text style={styles.small}>
+                        Deleting your Onesa account affects access to your other Onesa products.
+                        Onesa Account asks you to confirm the request.
+                      </Text>
+                      <Button
+                        secondary
+                        disabled={busy}
+                        onPress={() => {
+                          void Linking.openURL("https://account.onesa.eu/account/closure").catch(() =>
+                            setNotice("Onesa Account could not open. Try again or visit account.onesa.eu/account/closure."),
+                          );
+                        }}
+                      >
+                        Delete my Onesa account
+                      </Button>
+                    </>
+                  ) : null}
                 </Card>
                 {pilot ? (
                   <>
