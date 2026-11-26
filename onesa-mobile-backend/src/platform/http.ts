@@ -98,7 +98,7 @@ export function createPlatformServer(config: PlatformConfig) {
 <body><main><p>Onesa Mobile</p><h1>Sign-in incomplete</h1><p>${guidance}</p>
 <nav aria-label="Return to a workspace"><a href="/account/">Return to customer account</a>
 <a href="/internal/">Return to staff sign-in</a></nav>
-<p>Using the Onesa Mobile app? Close this browser window, return to the app and choose “Continue with Onesa”.</p>
+<p>Using the Onesa Mobile app? Close this browser window, return to the app and choose “Sign in”.</p>
 </main></body></html>`;
         res.writeHead(status, {
           "Content-Type": "text/html; charset=utf-8",

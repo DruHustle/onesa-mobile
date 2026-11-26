@@ -452,7 +452,7 @@ try {
     await view.route('https://account.onesa.eu/**',route=>route.fulfill({contentType:'text/html',body:'<a href="'+origin+'/account/?registration=complete">Back to Mobile</a>'}));
     await view.route('**/api/v1/auth/onesa/start?**',route=>route.fulfill({contentType:'text/html',body:'<h1>Mobile sign-in</h1>'}));
     await view.goto(origin+path+'#'+section);
-    await view.getByRole('link',{name:surface==='staff'?'Request administrator access':'Create an Onesa account',exact:true}).click();
+    await view.getByRole('link',{name:surface==='staff'?'Request administrator access':'Create account',exact:true}).click();
     await view.getByRole('link',{name:'Back to Mobile'}).click();
     await view.getByRole('heading',{name:'Mobile sign-in'}).waitFor();
     assert.equal(view.url(),origin+'/api/v1/auth/onesa/start?surface='+surface+'&section='+section);
@@ -476,7 +476,7 @@ try {
     await main.getByRole('alert').getByText('Synthetic temporary outage', {exact:true}).waitFor();
     await main.getByText('Onesa sign-in is temporarily unavailable. Retry the connection when it is restored.', {exact:true}).waitFor();
     assert.equal(await main.getByRole('link', {name:'Sign in to Company Portal', exact:true}).count(), 0);
-    assert.equal(await main.getByRole('link', {name:/Create an Onesa account|Request administrator access/}).count(), 0);
+    assert.equal(await main.getByRole('link', {name:/Create account|Request administrator access/}).count(), 0);
     const signIn = main.getByRole('form', {name:surface+' sign-in', exact:true});
     assert.equal(await signIn.count(), 0);
     await assertLayout(outagePage, surface.toLowerCase()+'-outage-'+locale);

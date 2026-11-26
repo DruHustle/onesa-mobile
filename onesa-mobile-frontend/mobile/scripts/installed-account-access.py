@@ -51,12 +51,12 @@ if __name__ == "__main__":
         tap("Return to account access")
         visible("Your mobile account")
         print("Installed application restored the account screen", flush=True)
-        # Whether a customer can sign in depends on the hosted account API.
-        # Report its actual fallback separately from the working preview.
+        # A Mobile outage must never redirect a customer to Portal staff sign-in.
         try:
             visible("Sign in to Company Portal", allow_scroll=True)
-            print("Hosted account unavailable; installed app offers Company Portal fallback", flush=True)
         except RuntimeError:
-            print("Company Portal fallback was not visible", flush=True)
+            print("No Company Portal sign-in fallback", flush=True)
+        else:
+            raise RuntimeError("Mobile unexpectedly offered Company Portal sign-in")
     finally:
         adb("shell", "rm", "-f", "/sdcard/onesa-qualification.xml")

@@ -232,10 +232,6 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
       if (opening.returned) setReturnedFromRegistration(true);
     }
   }
-  function openPortal() {
-    const url = "https://portal.onesa.eu/admin";
-    void Linking.openURL(url).catch(() => setNotice("Open " + url + " in your browser."));
-  }
   const resetPrivateState = useCallback(() => {
     accountReads.invalidate();
     current.current = null;
@@ -753,7 +749,7 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
       setReturnedFromRegistration(false);
       setTab(value.tab);
       if(storageKey && authMode==='onesa' && ssoAvailable && !credential)void signInOnesa(value.tab);
-    }).catch(()=>{if(active)setNotice('Return to your account and choose Sign in with Onesa.');});
+    }).catch(()=>{if(active)setNotice('Return to your account and choose Sign in.');});
     return ()=>{active=false;};
   },[returnedFromRegistration,loading,storageKey,authMode,ssoAvailable,credential]);
   // Sign-out must be able to cancel an in-flight private operation.
@@ -1087,25 +1083,16 @@ function MobileAccount({ openPreview }: { openPreview: () => void }) {
                     onPress={() => signInOnesa()}
                     disabled={busy || cleanupRequired || !ssoAvailable}
                   >
-                    Continue with Onesa
+                    Sign in
                   </Button>
-                  <Text style={styles.small}>
-                    Registration, password recovery and account verification
-                    take place in the shared Onesa sign-in service.
-                  </Text>
                   {!ssoAvailable ? (
                     <Text style={styles.small}>Account sign-in is awaiting configuration.</Text>
                   ) : null}
                 </>
               )}
-              {(discoveryUnavailable || !base || (!loading && authMode !== "lab" && !ssoAvailable)) && (
-                <>
-                  <Button secondary onPress={() => openPortal()}>Sign in to Company Portal</Button>
-                </>
-              )}
               {(!base || discoveryUnavailable || (!loading && authMode !== "lab")) && (
                 <>
-                  <Button secondary onPress={()=>register("user")}>Create an Onesa account</Button>
+                  <Button secondary onPress={()=>register("user")}>Create account</Button>
                   <Button secondary onPress={()=>register("admin")}>Request administrator access</Button>
                 </>
               )}
