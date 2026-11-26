@@ -24,6 +24,7 @@ export interface AuthIssue {
 export interface OnesaConfig {
   readonly audience?: string;
   readonly browserLogout?: boolean;
+  readonly directSignup?: boolean;
   readonly issuer: string;
   readonly clientId: string;
   readonly clientSecret: string;

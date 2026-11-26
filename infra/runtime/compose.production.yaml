@@ -11,6 +11,7 @@ services:
       ONESA_ISSUER: '${MOBILE_ONESA_ISSUER:?Set the approved Onesa issuer}'
       ONESA_CLIENT_ID: '${MOBILE_ONESA_CLIENT_ID:?Set the registered Mobile client ID}'
       ONESA_MOBILE_API_AUDIENCE: '${MOBILE_ONESA_API_AUDIENCE:-}'
+      ONESA_MOBILE_DIRECT_SIGNUP: '${MOBILE_ONESA_DIRECT_SIGNUP:-false}'
       ONESA_CLIENT_SECRET_FILE: /run/secrets/onesa-client-secret
       AUTH_ENCRYPTION_KEY_FILE: /run/secrets/auth-encryption-key
       ONESA_MOBILE_BROWSER_LOGOUT: '${MOBILE_ONESA_BROWSER_LOGOUT:-false}'
