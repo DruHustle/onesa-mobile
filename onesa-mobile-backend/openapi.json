@@ -1655,6 +1655,17 @@
             "description": "Defaults to customer; staff requests MFA and source authentication no older than five minutes."
           },
           {
+            "name": "signup",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "description": "Start Universal Login with signup when direct registration is enabled for the managed customer surface."
+          },
+          {
             "name": "section",
             "in": "query",
             "schema": {
@@ -10097,6 +10108,9 @@
             ]
           },
           "ssoAvailable": {
+            "type": "boolean"
+          },
+          "signupAvailable": {
             "type": "boolean"
           },
           "user": {

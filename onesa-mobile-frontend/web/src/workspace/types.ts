@@ -7,7 +7,7 @@ export interface User {
 }
 export interface Session {
   authenticated: boolean; mode: 'lab' | 'production'; authMode: 'lab' | 'onesa';
-  ssoAvailable: boolean; user: User | null; csrfToken: string | null;
+  ssoAvailable: boolean; signupAvailable?: boolean; user: User | null; csrfToken: string | null;
 }
 export interface Item {
   id: string; kind: string; owner: string; revision: number; createdAt: string; updatedAt: string;

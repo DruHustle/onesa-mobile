@@ -49,6 +49,7 @@ const workspaceSections: Record<Surface, readonly string[]> = {
 
 export interface OidcStart {
   readonly surface: Surface;
+  readonly signup?: boolean;
   readonly returnTo?: "/account/" | "/internal/";
   readonly section?: string;
   readonly native?: { readonly codeChallenge: string; readonly state: string };
@@ -302,6 +303,8 @@ export class AuthService {
   async beginOnesa(input: OidcStart): Promise<{ redirectUrl: string; flowCookie: string }> {
     if (!this.identity) throw new AuthError(503, "AUTH_NOT_CONFIGURED", "Onesa sign-in has not been configured for Mobile.");
     if (!["customer", "staff"].includes(input.surface)) throw new AuthError(400, "AUTH_SURFACE_INVALID");
+    if (input.signup && (input.surface !== "customer" || !this.config.onesa?.audience || !this.config.onesa.directSignup))
+      throw new AuthError(403, "SIGNUP_UNAVAILABLE");
     const base = input.returnTo ?? (input.surface === "staff" ? "/internal/" : "/account/");
     if ((input.surface === "staff" && base !== "/internal/") || (input.surface === "customer" && base !== "/account/")) throw new AuthError(400, "AUTH_RETURN_INVALID");
     if (input.section !== undefined && (input.native || !workspaceSections[input.surface].includes(input.section))) {
@@ -310,7 +313,7 @@ export class AuthService {
     const returnTo = input.section ? base + "#" + input.section : base;
     if (input.native && (input.surface !== "customer" || !tokenPattern.test(input.native.codeChallenge) || !tokenPattern.test(input.native.state))) throw new AuthError(400, "AUTH_NATIVE_INVALID");
     const state = randomToken(), nonce = randomToken(), verifier = randomToken(), cookie = randomToken();
-    const redirectUrl = await this.identity.authorization({ state, nonce, verifier, surface: input.surface });
+    const redirectUrl = await this.identity.authorization({ state, nonce, verifier, surface: input.surface, signup: input.signup === true });
     this.store.cleanup(nowSeconds());
     this.store.db.prepare("INSERT INTO mobile_auth_flows VALUES(?,?,?,?,?,?,?,?,?)").run(
       digest(state), digest(cookie), seal(verifier, this.store.key), nonce, input.surface, returnTo, nowSeconds() + 600,

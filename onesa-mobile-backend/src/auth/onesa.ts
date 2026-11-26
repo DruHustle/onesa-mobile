@@ -133,13 +133,14 @@ export class OnesaIdentity {
     }
     return this.clientPromise;
   }
-  async authorization(input: { state: string; nonce: string; verifier: string; surface: Surface }): Promise<string> {
+  async authorization(input: { state: string; nonce: string; verifier: string; surface: Surface; signup?: boolean }): Promise<string> {
     const client = await this.client();
     const parameters: Record<string, string> = {
       redirect_uri: this.config.redirectUri,
       response_type: "code",
       scope: this.managed ? "openid profile" : "openid email profile onesa",
       ...(this.config.audience ? {audience:this.config.audience}:{}),
+      ...(input.signup ? {screen_hint:"signup"} : {}),
       code_challenge: await oidc.calculatePKCECodeChallenge(input.verifier),
       code_challenge_method: "S256",
       state: input.state,

@@ -326,6 +326,7 @@ export function createPlatformServer(config: PlatformConfig) {
         );
       const flow = await auth.beginOnesa({
         surface: surface as "customer" | "staff",
+        signup: url.searchParams.get("signup") === "1",
         ...(url.searchParams.has("section") ? { section: url.searchParams.get("section")! } : {}),
         ...(codeChallenge && state ? { native: { codeChallenge, state } } : {}),
       });
@@ -424,6 +425,7 @@ export function createPlatformServer(config: PlatformConfig) {
         mode: config.mode,
         authMode: config.mode === "lab" ? "lab" : "onesa",
         ssoAvailable: !!config.onesa,
+        ...(config.onesa?.directSignup && config.onesa.audience ? {signupAvailable:true} : {}),
         user: session ? auth.publicSession(session) : null,
         csrfToken: session?.csrfToken ?? null,
       });

@@ -61,7 +61,7 @@ test("managed Mobile web callback returns to its section, retains the stable acc
     allowedOrigins: [origin],
     encryptionKey: randomBytes(32).toString("hex"),
     databasePath: join(root, "accounts.sqlite"),
-    onesa: { ...config, browserLogout: true },
+    onesa: { ...config, browserLogout: true, directSignup: true },
   };
   let auth = new AuthService(options),
     online = true,
@@ -102,14 +102,17 @@ test("managed Mobile web callback returns to its section, retains the stable acc
     });
   };
   try {
+    await assert.rejects(auth.beginOnesa({surface:"staff",signup:true}), {code:"SIGNUP_UNAVAILABLE"});
     const start = await auth.beginOnesa({
       surface: "customer",
       section: "help",
+      signup: true,
     });
     query = new URL(start.redirectUrl).searchParams;
     assert.equal(new URL(start.redirectUrl).pathname, "/authorize");
     assert.equal(query.get("audience"), audience);
     assert.equal(query.get("code_challenge_method"), "S256");
+    assert.equal(query.get("screen_hint"), "signup");
     const callback = new URL(config.redirectUri);
     callback.search = new URLSearchParams({
       code: "controlled",

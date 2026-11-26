@@ -57,6 +57,8 @@ export function loadPlatformConfig(
     throw Error("Onesa browser logout requires a managed Auth0 Mobile client.");
   }
   if (env.ONESA_MOBILE_API_AUDIENCE && !values.every(Boolean)) throw Error("Managed Mobile audience requires a configured Onesa client.");
+  const directSignup = env.ONESA_MOBILE_DIRECT_SIGNUP === "true";
+  if (directSignup && !env.ONESA_MOBILE_API_AUDIENCE) throw Error("Direct signup requires a managed Mobile audience.");
   if (values.some(Boolean) && !values.every(Boolean))
     throw Error("Set all three ONESA identity values together.");
   let onesa: PlatformConfig["onesa"];
@@ -73,6 +75,7 @@ export function loadPlatformConfig(
     onesa = {
       ...(env.ONESA_MOBILE_API_AUDIENCE ? {audience:env.ONESA_MOBILE_API_AUDIENCE} : {}),
       ...(browserLogout === "true" ? { browserLogout: true } : {}),
+      ...(directSignup ? { directSignup: true } : {}),
       issuer: env.ONESA_ISSUER!,
       clientId: env.ONESA_CLIENT_ID!,
       clientSecret: env.ONESA_CLIENT_SECRET!,
