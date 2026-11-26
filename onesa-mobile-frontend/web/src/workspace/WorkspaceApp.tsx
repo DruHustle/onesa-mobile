@@ -330,11 +330,11 @@ export default function WorkspaceApp({surface}:{surface:Surface}) {
 function Loading({label}:{label:string}) {return <div className="mw-loading" role="status"><span className="mw-loading-dot" aria-hidden="true"/><p>{label}</p></div>;}
 function RegistrationLink({surface}:{surface:Surface}) {
   const audience=surface==='staff'?'admin':'user';
-  return <a onClick={()=>rememberRegistration(surface)} href={'https://account.onesa.eu/register?audience='+audience+'&product=mobile&platform=web'}>{surface==='staff'?'Request administrator access':'Create an Onesa account'}</a>;
+  return <a onClick={()=>rememberRegistration(surface)} href={surface==='staff'?'https://account.onesa.eu/access?product=mobile&role=administrator':'https://account.onesa.eu/register?audience='+audience+'&product=mobile&platform=web'}>{surface==='staff'?'Request administrator access':'Sign up'}</a>;
 }
 function IdentityUnavailableMessage() {
   return <span className="mw-secondary" role="status">
-    Onesa sign-in is temporarily unavailable. Retry the connection when it is restored.
+    Sign-in is temporarily unavailable. Retry the connection when it is restored.
   </span>;
 }
 
@@ -352,8 +352,8 @@ function SignIn({session,surface,section,busy,login}:{session:Session;surface:Su
     catch(error){setError(errorMessage(error));}finally{setSending(false);}
   }
   return <div className="mw-sign-in"><section className="mw-sign-in-intro"><p className="mw-eyebrow">{surface==='staff'?'Onesa Mobile Operations':'My Onesa Mobile'}</p><h1>{surface==='staff'?'The work behind your network.':'Your next step, clearly.'}</h1><p>{surface==='staff'?'Manage the physical bench, review evidence and support pilot participants.':'Manage your launch preference, ask for help and find your account records.'}</p><div className="mw-sign-in-boundary"><strong>Prelaunch workspace</strong><span>No mobile line or satellite entitlement is activated by signing in.</span></div></section>
-    <Panel title={surface==='staff'?'Staff sign-in':'Customer sign-in'} hint={session.authMode==='lab'?'Isolated lab accounts':'Your central Onesa account'}>
-      {session.ssoAvailable&&<div className="mw-sso"><a className="mw-button" href={`/api/v1/auth/onesa/start?${startQuery}`}>Continue with Onesa</a><p className="mw-secondary"><RegistrationLink surface={surface}/></p></div>}
+    <Panel title={surface==='staff'?'Staff sign-in':'Customer sign-in'} hint={session.authMode==='lab'?'Isolated lab accounts':undefined}>
+      {session.ssoAvailable&&<div className="mw-sso"><a className="mw-button" href={`/api/v1/auth/onesa/start?${startQuery}`}>Sign in</a><p className="mw-secondary"><RegistrationLink surface={surface}/></p></div>}
       {session.authMode==='lab'?<><Info>Use the pilot credentials supplied to you. These are lab accounts; do not enter a password from another service.{surface==='staff'?' Staff access also needs an authenticator code.':''}</Info><form className="mw-form mw-login-form" aria-label={`${surface==='staff'?'Staff':'Customer'} sign-in`} onSubmit={event=>void submit(event)}><fieldset disabled={busy||sending}><legend className="mw-visually-hidden">Pilot sign-in</legend>
         <label htmlFor="mw-username"><span>Lab username</span><input id="mw-username" name="username" autoComplete="username" required maxLength={254} autoCapitalize="none" spellCheck={false}/></label>
         <label htmlFor="mw-password"><span>Lab password</span><input id="mw-password" name="password" type="password" autoComplete="current-password" required maxLength={256}/></label>
